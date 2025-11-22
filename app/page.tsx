@@ -90,7 +90,7 @@ export default function HomePage() {
     <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
       <div className="border-b border-border/50">
-        <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
           <div className="mb-2">
             <h1 className="text-4xl font-bold tracking-tight text-foreground">
               FBI Project Archives
@@ -103,7 +103,7 @@ export default function HomePage() {
       </div>
 
       {/* Main Content */}
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-8">
           {/* Projects Grid */}
           <div className="w-full">

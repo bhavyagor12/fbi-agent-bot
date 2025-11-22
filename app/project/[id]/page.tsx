@@ -134,7 +134,7 @@ export default function ProjectDetailsPage() {
     <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 pb-20">
       {/* Navigation */}
       <div className="border-b border-border/50 bg-background/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="mx-auto max-w-5xl px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[80%] px-4 py-4 sm:px-6 lg:px-8">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
@@ -145,7 +145,7 @@ export default function ProjectDetailsPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8 space-y-12">
+      <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8 space-y-12">
         {/* Header Section */}
         <div className="space-y-6">
           <div className="space-y-2">
