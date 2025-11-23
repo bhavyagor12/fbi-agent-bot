@@ -23,7 +23,7 @@ export async function analyzeFeedback(
         const prompt = FEEDBACK_ANALYSIS_PROMPT(projectContext, feedbackText, hasMedia);
 
         const result = await model.generateContent(prompt);
-        const response = await result.response;
+        const response = result.response;
         const text = response.text();
 
         // Clean up code blocks if present
