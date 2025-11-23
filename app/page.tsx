@@ -1,91 +1,63 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import ProjectCard from "@/components/project-card";
 import SearchBar from "@/components/search-bar";
+import { useQuery } from "@tanstack/react-query";
 
 export interface Project {
-  id: string;
-  name: string;
+  id: number;
+  title: string;
   summary: string;
-  author: string;
+  users: {
+    first_name: string;
+    last_name: string;
+    username: string;
+  };
 }
 
-// Sample project data
-const SAMPLE_PROJECTS: Project[] = [
-  {
-    id: "1",
-    name: "E-Commerce Platform",
-    summary:
-      "A full-featured e-commerce solution with payment integration, inventory management, and customer analytics.",
-    author: "Sarah Chen",
-  },
-  {
-    id: "2",
-    name: "Project Management Tool",
-    summary:
-      "Collaborative project management app with real-time updates, task tracking, and team communication features.",
-    author: "Alex Rodriguez",
-  },
-  {
-    id: "3",
-    name: "AI Content Generator",
-    summary:
-      "Generate high-quality content using advanced AI models with customizable templates and bulk operations.",
-    author: "Jamie Lee",
-  },
-  {
-    id: "4",
-    name: "Social Media Analytics",
-    summary:
-      "Track and analyze social media metrics across platforms with detailed insights and automated reporting.",
-    author: "Marcus Johnson",
-  },
-  {
-    id: "5",
-    name: "Video Streaming Platform",
-    summary:
-      "Build your own video streaming service with adaptive bitrate, live streaming, and interactive features.",
-    author: "Lisa Wang",
-  },
-  {
-    id: "6",
-    name: "Task Automation Suite",
-    summary:
-      "Automate repetitive workflows with visual workflow builder, integrations, and scheduling capabilities.",
-    author: "David Kim",
-  },
-  {
-    id: "7",
-    name: "Data Visualization Dashboard",
-    summary:
-      "Create interactive dashboards with real-time data visualization, custom charts, and drill-down analytics.",
-    author: "Emma Thompson",
-  },
-  {
-    id: "8",
-    name: "Learning Management System",
-    summary:
-      "Comprehensive LMS with course management, student tracking, quizzes, and certification features.",
-    author: "Raj Patel",
-  },
-];
+// Debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
-  // Filter projects based on search
-  const filteredProjects = useMemo(() => {
-    return SAMPLE_PROJECTS.filter((project) => {
-      return (
-        project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        project.author.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    });
-  }, [searchQuery]);
-
+  const {
+    data: projects = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["projects", debouncedSearchQuery],
+    queryFn: async () => {
+      const url = debouncedSearchQuery
+        ? `/api/getAllActiveProjects/query?query=${encodeURIComponent(
+            debouncedSearchQuery
+          )}`
+        : "/api/getAllActiveProjects";
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return res.json();
+    },
+  });
+  console.log("projects", projects);
   return (
     <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Header */}
@@ -115,14 +87,31 @@ export default function HomePage() {
 
             {/* Results Count */}
             <div className="mb-6 text-sm text-muted-foreground">
-              {filteredProjects.length} project
-              {filteredProjects.length !== 1 ? "s" : ""} found
+              {isLoading ? (
+                "Loading..."
+              ) : isError ? (
+                "Error loading projects"
+              ) : (
+                <>
+                  {projects.length} project
+                  {projects.length !== 1 ? "s" : ""} found
+                </>
+              )}
             </div>
 
             {/* Projects Grid */}
-            {filteredProjects.length > 0 ? (
+            {isLoading ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredProjects.map((project) => (
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="h-64 rounded-xl border bg-card/50 animate-pulse"
+                  />
+                ))}
+              </div>
+            ) : projects.length > 0 ? (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {projects.map((project: Project) => (
                   <ProjectCard key={project.id} project={project} />
                 ))}
               </div>
