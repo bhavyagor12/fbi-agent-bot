@@ -1,13 +1,11 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = process.env.SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // use service key on server
-
-
-export const supabaseServer = createClient(
-  supabaseUrl,
-  supabaseServiceRoleKey,
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY!;
+console.log(process.env);
+console.log("supabaseUrl", supabaseUrl);
+console.log("supabaseServiceRoleKey", supabaseServiceRoleKey);
+export const supabaseServer = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 // --- Users ---
 
@@ -17,14 +15,14 @@ export async function upsertUser(user: {
   first_name?: string;
   last_name?: string;
 }) {
-  return await supabaseServer.from('users').upsert(user).select().single();
+  return await supabaseServer.from("users").upsert(user).select().single();
 }
 
 export async function getUser(telegram_user_id: number) {
   return await supabaseServer
-    .from('users')
-    .select('*')
-    .eq('telegram_user_id', telegram_user_id)
+    .from("users")
+    .select("*")
+    .eq("telegram_user_id", telegram_user_id)
     .single();
 }
 
@@ -49,40 +47,51 @@ export async function createProject(project: {
   telegram_chat_id: number;
   user_id: number;
 }) {
-  return await supabaseServer.from('projects').insert(project).select().single();
+  return await supabaseServer
+    .from("projects")
+    .insert(project)
+    .select()
+    .single();
 }
 
 export async function getProjectByMessageId(messageId: number) {
   return await supabaseServer
-    .from('projects')
-    .select('*')
-    .eq('telegram_message_id', messageId)
+    .from("projects")
+    .select("*")
+    .eq("telegram_message_id", messageId)
     .single();
 }
 
 export async function getProjectById(id: number) {
   return await supabaseServer
-    .from('projects')
-    .select('*')
-    .eq('id', id)
+    .from("projects")
+    .select("*")
+    .eq("id", id)
     .single();
 }
 
-
 export async function getActiveProjects() {
   return await supabaseServer
-    .from('projects')
-    .select('id, title')
-    .eq('status', 'active');
+    .from("projects")
+    .select("id, title, summary, users(first_name, last_name, username)")
+    .eq("status", "active");
 }
 
 export async function findProjectByName(name: string) {
   // Case-insensitive search
   return await supabaseServer
-    .from('projects')
-    .select('*')
-    .ilike('title', name) // ilike is case-insensitive
+    .from("projects")
+    .select("*")
+    .ilike("title", name) // ilike is case-insensitive
     .single();
+}
+
+export async function searchActiveProjects(query: string) {
+  return await supabaseServer
+    .from("projects")
+    .select("id, title, summary, users(first_name, last_name, username)")
+    .eq("status", "active")
+    .or(`title.ilike.%${query}%,summary.ilike.%${query}%`);
 }
 
 // --- Feedback ---
@@ -96,31 +105,38 @@ export async function createFeedback(feedback: {
   media_url?: string | null;
   media_type?: string | null;
 }) {
-  return await supabaseServer.from('feedback').insert(feedback).select().single();
+  return await supabaseServer
+    .from("feedback")
+    .insert(feedback)
+    .select()
+    .single();
 }
 
-export async function updateFeedbackScores(id: number, scores: {
-  score_relevance: number;
-  score_depth: number;
-  score_evidence: number;
-  score_constructiveness: number;
-  score_tone: number;
-  ai_summary: string;
-}) {
-  return await supabaseServer.from('feedback').update(scores).eq('id', id);
+export async function updateFeedbackScores(
+  id: number,
+  scores: {
+    score_relevance: number;
+    score_depth: number;
+    score_evidence: number;
+    score_constructiveness: number;
+    score_tone: number;
+    ai_summary: string;
+  }
+) {
+  return await supabaseServer.from("feedback").update(scores).eq("id", id);
 }
 
 export async function getFeedbackByProjectId(projectId: number) {
   return await supabaseServer
-    .from('feedback')
-    .select('*')
-    .eq('project_id', projectId);
+    .from("feedback")
+    .select("*")
+    .eq("project_id", projectId);
 }
 
 export async function getFeedbackByMessageId(messageId: number) {
   return await supabaseServer
-    .from('feedback')
-    .select('*')
-    .eq('message_id', messageId)
+    .from("feedback")
+    .select("*")
+    .eq("message_id", messageId)
     .single();
 }
