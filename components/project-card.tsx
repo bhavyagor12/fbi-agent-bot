@@ -9,12 +9,19 @@ interface ProjectCardProps {
 }
 
 export default function ProjectCard({ project }: ProjectCardProps) {
+  // Derive author information from users object
+  const firstName = project.users?.first_name || "";
+  const lastName = project.users?.last_name || "";
+  const fullName = [firstName, lastName].filter(Boolean).join(" ") || "Unknown";
+  const username = project.users?.username;
+  const authorInitial = fullName.charAt(0).toUpperCase();
+
   return (
     <Link href={`/project/${project.id}`}>
       <div className="group rounded-lg border border-border/50 bg-card p-6 hover:border-primary/50 hover:bg-card/50 transition-all hover:shadow-lg cursor-pointer h-full flex flex-col">
         {/* Project Name */}
         <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
-          {project.name}
+          {project.title}
         </h3>
 
         {/* Summary */}
@@ -27,11 +34,18 @@ export default function ProjectCard({ project }: ProjectCardProps) {
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
               <span className="text-xs font-bold text-primary-foreground">
-                {project.author.charAt(0).toUpperCase()}
+                {authorInitial}
               </span>
             </div>
-            <div className="text-sm text-muted-foreground">
-              {project.author}
+            <div className="flex flex-col">
+              <div className="text-sm text-foreground font-medium">
+                {fullName}
+              </div>
+              {username && (
+                <div className="text-xs text-muted-foreground/70">
+                  @{username}
+                </div>
+              )}
             </div>
           </div>
 

@@ -91,7 +91,9 @@ export async function searchActiveProjects(query: string) {
     .from("projects")
     .select("id, title, summary, users(first_name, last_name, username)")
     .eq("status", "active")
-    .or(`title.ilike.%${query}%,summary.ilike.%${query}%`);
+    .or(
+      `title.ilike.%${query}%,summary.ilike.%${query}%,users.username.ilike.%${query}%,users.first_name.ilike.%${query}%,users.last_name.ilike.%${query}%`
+    );
 }
 
 // --- Feedback ---
