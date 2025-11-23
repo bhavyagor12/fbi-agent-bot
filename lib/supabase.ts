@@ -2,9 +2,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY!;
-console.log(process.env);
-console.log("supabaseUrl", supabaseUrl);
-console.log("supabaseServiceRoleKey", supabaseServiceRoleKey);
 export const supabaseServer = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 // --- Users ---
@@ -65,7 +62,31 @@ export async function getProjectByMessageId(messageId: number) {
 export async function getProjectById(id: number) {
   return await supabaseServer
     .from("projects")
-    .select("*")
+    .select(
+      `
+      id, 
+      title, 
+      summary, 
+      feedback_summary,
+      created_at,
+      users(first_name, last_name, username),
+      feedback(
+        id, 
+        content, 
+        created_at,
+        message_id,
+        parent_message_id,
+        media_url,
+        media_type,
+        score_relevance,
+        score_depth,
+        score_evidence,
+        score_constructiveness,
+        score_tone,
+        users(first_name, last_name, username)
+      )
+    `
+    )
     .eq("id", id)
     .single();
 }

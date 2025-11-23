@@ -57,9 +57,8 @@ export default function HomePage() {
       return res.json();
     },
   });
-  console.log("projects", projects);
   return (
-    <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <main className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
       {/* Header */}
       <div className="border-b border-border/50">
         <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
