@@ -41,6 +41,7 @@ export async function createProject(project: {
   title: string;
   summary: string;
   telegram_message_id: number;
+  user_message_id?: number;
   telegram_chat_id: number;
   user_id: number;
 }) {

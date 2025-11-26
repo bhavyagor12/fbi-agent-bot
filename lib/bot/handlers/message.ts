@@ -118,8 +118,7 @@ export async function handleMessage(ctx: Context) {
                             score_depth: scores.depth,
                             score_evidence: scores.evidence,
                             score_constructiveness: scores.constructiveness,
-                            score_tone: scores.tone,
-                            ai_summary: scores.summary
+                            score_tone: scores.tone
                         });
                     }
                 });

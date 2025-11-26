@@ -19,25 +19,56 @@ if (!process.env.TELEGRAM_BOT_TOKEN) {
 
 export const bot = new Bot(process.env.TELEGRAM_BOT_TOKEN);
 
+// Helper to parse project command text
+function parseProjectCommand(text: string): { title: string, summary: string } | null {
+    let cleanTitle = '';
+    let summary = '';
+
+    // Check for "Title:" format (multi-line)
+    if (text.includes('\n') && text.toLowerCase().includes('title:')) {
+        const lines = text.split('\n');
+        const titleLineIndex = lines.findIndex(line => line.toLowerCase().trim().startsWith('title:'));
+
+        if (titleLineIndex !== -1) {
+            // Extract title
+            cleanTitle = lines[titleLineIndex].substring(6).trim(); // Remove "Title:"
+
+            // Extract summary (everything else)
+            summary = lines.slice(titleLineIndex + 1).join('\n').trim();
+        }
+    }
+
+    // Fallback to hyphen format if title not found yet
+    if (!cleanTitle && text.includes('-')) {
+        const [titlePart, ...summaryParts] = text.split('-');
+        cleanTitle = titlePart.trim();
+        summary = summaryParts.join('-').trim();
+    }
+
+    if (!cleanTitle || !summary) return null;
+
+    return { title: cleanTitle, summary };
+}
+
 // Command: /startproject <title> - <summary>
 bot.command('startproject', async (ctx) => {
     const text = ctx.match;
-    if (!text || typeof text !== 'string' || !text.includes('-')) {
+    if (!text || typeof text !== 'string') {
         return ctx.reply(
-            'Usage: /startproject <title> - <summary>\nExample: /startproject New Website - A redesign of our landing page.'
+            'Usage:\n1. /startproject <title> - <summary>\n2. /startproject\nTitle: <title>\n<summary>'
         );
     }
 
-    const [title, ...summaryParts] = text.split('-');
-    const summary = summaryParts.join('-').trim();
-    const cleanTitle = title.trim();
+    const parsed = parseProjectCommand(text);
 
-    if (!cleanTitle || !summary) {
-        return ctx.reply('Please provide both a title and a summary.');
+    if (!parsed) {
+        return ctx.reply('Please provide both a title and a summary.\n\nFormat:\n/startproject Title - Summary\nOR\n/startproject\nTitle: My Project\nMy Summary...');
     }
 
-    if (!ctx.from) {
-        return ctx.reply('Could not identify user.');
+    const { title: cleanTitle, summary } = parsed;
+
+    if (!ctx.from || !ctx.message) {
+        return ctx.reply('Could not identify user or message.');
     }
 
     try {
@@ -49,6 +80,7 @@ bot.command('startproject', async (ctx) => {
             last_name: ctx.from.last_name
         });
 
+        // 2. Send the project root message
         // 2. Send the project root message
         const message = await ctx.reply(
             `🚀 *New Project: ${cleanTitle}*\n\n${summary}\n\n_Reply to this message to add feedback._`,
@@ -83,7 +115,87 @@ bot.command('startproject', async (ctx) => {
 });
 
 // Command: /feedback
+// Command: /feedback
 bot.command('feedback', async (ctx) => {
+    const text = ctx.match;
+
+    // Check if arguments are provided (e.g. "Title: My Project")
+    if (typeof text === 'string' && text.trim().length > 0) {
+        // Try to parse "Title: <Project Name>"
+        // Regex to find "Title:" followed by text, until newline or end of string
+        const titleMatch = text.match(/Title:\s*(.*?)(?:\n|$)/i);
+
+        if (titleMatch) {
+            const projectName = titleMatch[1].trim();
+            const { data: project } = await findProjectByName(projectName);
+
+            if (!project) {
+                return ctx.reply(`Project "${projectName}" not found.`);
+            }
+
+            // Check if there is content after the title line
+            // We strip the title line and see if anything remains
+            const titleLine = titleMatch[0];
+            const content = text.replace(titleLine, '').trim();
+
+            if (content) {
+                // Scenario A: Direct Feedback provided
+                // We need to simulate the feedback creation logic
+                // Ideally we refactor the creation logic into a helper, but for now we duplicate/inline slightly
+                // or just call createFeedback directly.
+
+                if (!ctx.from) return ctx.reply('Could not identify user.');
+
+                const { data: savedFeedback, error } = await createFeedback({
+                    project_id: project.id,
+                    user_id: ctx.from.id,
+                    content: content,
+                    message_id: ctx.message?.message_id || 0,
+                    // No parent message really, or maybe the command itself
+                    parent_message_id: undefined,
+                    media_url: null, // Command args usually don't have media attached in this way easily
+                    media_type: null
+                });
+
+                if (error) {
+                    console.error("Error saving feedback:", error);
+                    return ctx.reply('Failed to save feedback.');
+                }
+
+                // AI Analysis
+                analyzeFeedback(content, project.summary, false).then(async (scores) => {
+                    console.log(scores)
+                    if (scores && savedFeedback) {
+                        await updateFeedbackScores(savedFeedback.id, {
+                            score_relevance: scores.relevance,
+                            score_depth: scores.depth,
+                            score_evidence: scores.evidence,
+                            score_constructiveness: scores.constructiveness,
+                            score_tone: scores.tone
+                        });
+                    }
+                });
+
+                try {
+                    await ctx.react('👍');
+                } catch (e) {
+                    // ignore
+                }
+
+            } else {
+                // Scenario B: No content, just Title -> Prompt for feedback
+                return ctx.reply(
+                    `Please reply to this message with your feedback for *${project.title}*.`,
+                    {
+                        parse_mode: 'Markdown',
+                        reply_markup: { force_reply: true }
+                    }
+                );
+            }
+        }
+    }
+
+    // Default behavior: Show list
     const { data: projects, error } = await getActiveProjects();
 
     if (error || !projects || projects.length === 0) {
@@ -178,43 +290,24 @@ bot.on('message', async (ctx) => {
         if (project) {
             projectId = project.id;
         } else {
-            // 1b. Check if replying to another feedback
-            const { data: parentFeedback } = await getFeedbackByMessageId(replyTo.message_id);
-            if (parentFeedback) {
-                projectId = parentFeedback.project_id;
-            } else {
-                // 1c. Check if replying to the bot's "Send feedback for X" message
-                if (replyTo.from?.id === ctx.me.id && replyTo.text?.includes('feedback for')) {
-                    // Extract project name from the bot's message text
-                    // Format: "Please reply to this message with your feedback for *Project Name*."
-                    // We can try to parse it, or better, we should have encoded it.
-                    // But for now, let's try to find the project by name from the text.
-                    // This is a bit brittle but works for V1.
-                    // Regex: feedback for (.*)\.
-                    const match = replyTo.text.match(/feedback for \*([^*]+)\*\./);
-                    if (match) {
-                        const projectName = match[1];
-                        const { data: p } = await findProjectByName(projectName);
-                        if (p) projectId = p.id;
+            // 1b. Check if replying to the bot's "Send feedback for X" message
+            if (replyTo.from?.id === ctx.me.id && replyTo.text?.includes('feedback for')) {
+                // Extract project name from the bot's message text
+                // Format: "Please reply to this message with your feedback for *Project Name*."
+                // Telegram often strips markdown in reply_to_message.text, so we match plain text too.
+                // Regex: feedback for (.*)\.$ (match everything until the last dot)
+                const match = replyTo.text.match(/feedback for (.+)\.$/i);
+                if (match) {
+                    let projectName = match[1].trim();
+                    // Remove wrapping asterisks if present (in case markdown was preserved)
+                    if (projectName.startsWith('*') && projectName.endsWith('*')) {
+                        projectName = projectName.slice(1, -1).trim();
                     }
-                }
-            }
-        }
-    }
 
-    // Case 2: No reply, check for project name mention
-    if (!projectId && text) {
-        // Get all active projects to check against
-        // Optimization: In a real app, we might use a more efficient search or cache.
-        const { data: projects } = await getActiveProjects();
-        if (projects) {
-            for (const p of projects) {
-                // Simple case-insensitive inclusion check
-                // "I think Project A is great" -> Matches "Project A"
-                if (text.toLowerCase().includes(p.title.toLowerCase())) {
-                    projectId = p.id;
-                    break; // Match first found
+                    const { data: p } = await findProjectByName(projectName);
+                    if (p) projectId = p.id;
                 }
+
             }
         }
     }
@@ -268,8 +361,7 @@ bot.on('message', async (ctx) => {
                             score_depth: scores.depth,
                             score_evidence: scores.evidence,
                             score_constructiveness: scores.constructiveness,
-                            score_tone: scores.tone,
-                            ai_summary: scores.summary
+                            score_tone: scores.tone
                         });
                     }
                 });
