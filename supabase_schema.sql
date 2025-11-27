@@ -57,7 +57,7 @@ create table public.feedback (
   score_constructiveness integer null,
   score_tone integer null,
   score_originality integer null,
-  ai_summary text null,
+  content_embedding vector(1536),
   constraint feedback_pkey primary key (id),
   constraint feedback_project_id_fkey foreign KEY (project_id) references projects (id) on delete CASCADE,
   constraint feedback_user_id_fkey foreign KEY (user_id) references users (telegram_user_id)
@@ -66,3 +66,6 @@ create table public.feedback (
 create index IF not exists feedback_project_id_idx on public.feedback using btree (project_id) TABLESPACE pg_default;
 
 create index IF not exists feedback_user_id_idx on public.feedback using btree (user_id) TABLESPACE pg_default;
+
+-- Index for vector similarity search using cosine distance
+create index IF not exists feedback_content_embedding_idx on public.feedback using ivfflat (content_embedding vector_cosine_ops) with (lists = 100);

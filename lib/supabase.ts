@@ -128,6 +128,7 @@ export async function createFeedback(feedback: {
   parent_message_id?: number;
   media_url?: string | null;
   media_type?: string | null;
+  content_embedding?: number[];
 }) {
   return await supabaseServer
     .from("feedback")
@@ -145,7 +146,6 @@ export async function updateFeedbackScores(
     score_constructiveness: number;
     score_tone: number;
     score_originality: number;
-    ai_summary: string;
   }
 ) {
   return await supabaseServer.from("feedback").update(scores).eq("id", id);
@@ -166,6 +166,27 @@ export async function getFeedbackByMessageId(messageId: number) {
     .single();
 }
 
+/**
+ * Get feedback embeddings for a project to perform semantic similarity search
+ */
+export async function getFeedbackEmbeddingsByProjectId(projectId: number) {
+  return await supabaseServer
+    .from("feedback")
+    .select("id, content, content_embedding, created_at")
+    .eq("project_id", projectId)
+    .not("content_embedding", "is", null);
+}
+
+/**
+ * Update feedback with embedding vector
+ */
+export async function updateFeedbackEmbedding(id: number, embedding: number[]) {
+  return await supabaseServer
+    .from("feedback")
+    .update({ content_embedding: embedding })
+    .eq("id", id);
+}
+
 // --- XP Management ---
 
 /**
@@ -173,12 +194,12 @@ export async function getFeedbackByMessageId(messageId: number) {
  */
 export async function updateUserXP(userId: number, xpToAdd: number) {
   // Import here to avoid circular dependencies
-  const { calculateTier } = await import('./xp');
+  const { calculateTier } = await import("./xp");
 
   // Get current user
   const { data: user, error: getUserError } = await getUser(userId);
   if (getUserError || !user) {
-    console.error('Error getting user for XP update:', getUserError);
+    console.error("Error getting user for XP update:", getUserError);
     return { data: null, error: getUserError };
   }
 

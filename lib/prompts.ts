@@ -21,9 +21,10 @@ Evaluate the feedback based on the following criteria. Assign a score from 1 to 
 3.  **Evidence**: Does it include supporting evidence like screenshots, documents, or references? (If 'Has Media/Attachments' is true, this score should generally be higher).
 4.  **Constructiveness**: Does it offer constructive suggestions or solutions? (vs. pure praise or vague criticism)
 5.  **Tone**: Is the writing clear, concise, and professional?
-6.  **Originality**: Is the feedback unique and thoughtful? (vs. generic, copy-pasted, or repetitive comments that may indicate farming)
 
 Additionally, provide a very brief, one-sentence summary of the feedback.
+
+Note: Originality is evaluated separately using semantic similarity analysis.
 </instructions>
 
 <output_format>
@@ -35,7 +36,6 @@ Return the result as a valid JSON object with the following structure. Do not in
   "evidence": number,
   "constructiveness": number,
   "tone": number,
-  "originality": number,
   "summary": "string"
 }
 </output_format>

@@ -35,7 +35,6 @@ interface Feedback {
   score_evidence: number | null;
   score_constructiveness: number | null;
   score_tone: number | null;
-  ai_summary: string | null;
   users: UserInfo;
 }
 
@@ -232,11 +231,6 @@ export default function ProjectDetailsPage() {
                             <div className="space-y-2">
                               {feedback.content && (
                                 <p>&quot;{feedback.content}&quot;</p>
-                              )}
-                              {feedback.ai_summary && (
-                                <div className="text-xs text-muted-foreground/70 italic">
-                                  Summary: {feedback.ai_summary}
-                                </div>
                               )}
                               {feedback.media_url && (
                                 <div className="mt-2">
