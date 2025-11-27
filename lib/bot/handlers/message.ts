@@ -203,10 +203,16 @@ export async function handleMessage(ctx: Context) {
               originality: originalityScore,
             });
 
-            await updateUserXP(message.from.id, feedbackXP);
-            console.log(
-              `Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${originalityScore})`
-            );
+            if (feedbackXP > 0) {
+              await updateUserXP(message.from.id, feedbackXP);
+              console.log(
+                `Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${originalityScore})`
+              );
+            } else {
+              console.log(
+                `No XP awarded to user ${message.from.id} - originality too low (${originalityScore})`
+              );
+            }
           })
           .catch((error) => {
             console.error("Error in async feedback processing:", error);

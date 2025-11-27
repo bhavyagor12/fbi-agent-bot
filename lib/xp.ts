@@ -106,6 +106,11 @@ export function calculateFeedbackXP(scores: {
   const { relevance, depth, evidence, constructiveness, tone, originality } =
     scores;
 
+  // No XP if originality is 1 or lower (duplicate/unoriginal feedback)
+  if (originality <= 1) {
+    return 0;
+  }
+
   // Calculate average score (all scores are 1-10)
   const average =
     (relevance + depth + evidence + constructiveness + tone + originality) / 6;
