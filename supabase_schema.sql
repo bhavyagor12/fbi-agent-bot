@@ -8,7 +8,12 @@ create table public.users (
   username text null,
   first_name text null,
   last_name text null,
-  constraint users_pkey primary key (telegram_user_id)
+  xp integer not null default 0,
+  tier text not null default 'bronze'::text,
+  constraint users_pkey primary key (telegram_user_id),
+  constraint users_tier_check check (
+    tier = any (array['bronze'::text, 'silver'::text, 'gold'::text, 'platinum'::text, 'diamond'::text])
+  )
 ) TABLESPACE pg_default;
 
 -- Projects table
@@ -51,6 +56,8 @@ create table public.feedback (
   score_evidence integer null,
   score_constructiveness integer null,
   score_tone integer null,
+  score_originality integer null,
+  ai_summary text null,
   constraint feedback_pkey primary key (id),
   constraint feedback_project_id_fkey foreign KEY (project_id) references projects (id) on delete CASCADE,
   constraint feedback_user_id_fkey foreign KEY (user_id) references users (telegram_user_id)

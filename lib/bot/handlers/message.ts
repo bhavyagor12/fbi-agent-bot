@@ -7,8 +7,10 @@ import {
     findProjectByName,
     getActiveProjects,
     getProjectById,
-    updateFeedbackScores
+    updateFeedbackScores,
+    updateUserXP
 } from '../../supabase';
+import { calculateFeedbackXP } from '../../xp';
 import { analyzeFeedback } from '../../ai';
 
 export async function handleMessage(ctx: Context) {
@@ -118,8 +120,24 @@ export async function handleMessage(ctx: Context) {
                             score_depth: scores.depth,
                             score_evidence: scores.evidence,
                             score_constructiveness: scores.constructiveness,
-                            score_tone: scores.tone
+                            score_tone: scores.tone,
+                            score_originality: scores.originality,
+                            ai_summary: scores.summary
                         });
+
+                        // Award XP for feedback
+
+                        const feedbackXP = calculateFeedbackXP({
+                            relevance: scores.relevance,
+                            depth: scores.depth,
+                            evidence: scores.evidence,
+                            constructiveness: scores.constructiveness,
+                            tone: scores.tone,
+                            originality: scores.originality
+                        });
+
+                        await updateUserXP(message.from.id, feedbackXP);
+                        console.log(`Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${scores.originality})`);
                     }
                 });
             }

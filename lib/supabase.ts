@@ -144,6 +144,7 @@ export async function updateFeedbackScores(
     score_evidence: number;
     score_constructiveness: number;
     score_tone: number;
+    score_originality: number;
     ai_summary: string;
   }
 ) {
@@ -162,5 +163,43 @@ export async function getFeedbackByMessageId(messageId: number) {
     .from("feedback")
     .select("*")
     .eq("message_id", messageId)
+    .single();
+}
+
+// --- XP Management ---
+
+/**
+ * Update a user's XP and recalculate their tier
+ */
+export async function updateUserXP(userId: number, xpToAdd: number) {
+  // Import here to avoid circular dependencies
+  const { calculateTier } = await import('./xp');
+
+  // Get current user
+  const { data: user, error: getUserError } = await getUser(userId);
+  if (getUserError || !user) {
+    console.error('Error getting user for XP update:', getUserError);
+    return { data: null, error: getUserError };
+  }
+
+  // Calculate new XP
+  const newXP = (user.xp || 0) + xpToAdd;
+  const newTier = calculateTier(newXP);
+
+  // Update user
+  return await supabaseServer
+    .from("users")
+    .update({ xp: newXP, tier: newTier })
+    .eq("telegram_user_id", userId);
+}
+
+/**
+ * Get a user's current XP and tier
+ */
+export async function getUserXPAndTier(userId: number) {
+  return await supabaseServer
+    .from("users")
+    .select("xp, tier")
+    .eq("telegram_user_id", userId)
     .single();
 }

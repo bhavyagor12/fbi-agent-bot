@@ -1,5 +1,6 @@
 import { Context } from 'grammy';
-import { createProject, getOrUpsertUser } from '../../supabase';
+import { createProject, getOrUpsertUser, updateUserXP } from '../../supabase';
+import { calculateProjectXP } from '../../xp';
 
 export async function handleStartProject(ctx: Context) {
     const text = ctx.match;
@@ -49,6 +50,11 @@ export async function handleStartProject(ctx: Context) {
             console.error('Supabase error:', error);
             return ctx.reply('Failed to save project to database.');
         }
+
+
+        const projectXP = calculateProjectXP();
+        await updateUserXP(ctx.from.id, projectXP);
+        console.log(`Awarded ${projectXP} XP to user ${ctx.from.id} for creating project`);
 
         // React to the original message (command)
         try {
