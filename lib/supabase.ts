@@ -93,6 +93,18 @@ export async function getProjectById(id: number) {
     .single();
 }
 
+export async function updateProjectFeedbackSummary(
+  id: number,
+  feedbackSummary: string
+) {
+  return await supabaseServer
+    .from("projects")
+    .update({ feedback_summary: feedbackSummary })
+    .eq("id", id)
+    .select()
+    .single();
+}
+
 export async function getActiveProjects() {
   return await supabaseServer
     .from("projects")

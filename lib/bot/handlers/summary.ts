@@ -1,5 +1,9 @@
 import { Context } from 'grammy';
-import { getProjectByMessageId, getFeedbackByProjectId } from '../../supabase';
+import { getProjectByMessageId, getFeedbackByProjectId, updateProjectFeedbackSummary } from '../../supabase';
+import { summarizeFeedback } from '../../ai';
+
+// Track ongoing summary generations to prevent duplicates
+const ongoingSummaries = new Set<number>();
 
 export async function handleSummaryCommand(ctx: Context) {
     if (!ctx.message?.reply_to_message) {
@@ -26,10 +30,75 @@ export async function handleSummaryCommand(ctx: Context) {
         return ctx.reply("No feedback found for this project yet.");
     }
 
-    // TODO: Integrate AI summarization here
-    // For now, just count the feedback
-    await ctx.reply(
-        `📊 *Summary for ${project.title}*\n\nFound ${feedback.length} feedback items.\n\n_AI Summarization coming soon..._`,
-        { parse_mode: 'Markdown' }
-    );
+    // Check if summary is already being generated for this project
+    if (ongoingSummaries.has(project.id)) {
+        return ctx.reply("⏳ A summary is already being generated for this project. Please wait...");
+    }
+
+    // Mark this project as having an ongoing summary generation
+    ongoingSummaries.add(project.id);
+
+    // Show loading message
+    let loadingMsg;
+    try {
+        loadingMsg = await ctx.reply("🤖 Generating AI summary...", { parse_mode: 'Markdown' });
+    } catch (error) {
+        ongoingSummaries.delete(project.id);
+        console.error("Error sending loading message:", error);
+        return;
+    }
+
+    try {
+        // Generate AI summary
+        const summary = await summarizeFeedback(feedback);
+
+        if (!summary) {
+            try {
+                await ctx.api.editMessageText(
+                    loadingMsg.chat.id,
+                    loadingMsg.message_id,
+                    `📊 *Summary for ${project.title}*\n\nFound ${feedback.length} feedback items.\n\n❌ Failed to generate AI summary.`,
+                    { parse_mode: 'Markdown' }
+                );
+            } catch (editError) {
+                console.error("Error editing message:", editError);
+            }
+            return;
+        }
+
+        // Format the summary for Telegram
+        let summaryText = `📊 *Summary for ${project.title}*\n\n`;
+        summaryText += `_${feedback.length} feedback item${feedback.length > 1 ? 's' : ''} analyzed_\n\n`;
+        summaryText += `📝 *Summary:*\n${summary}`;
+
+        // Telegram has a 4096 character limit, so truncate if needed
+        if (summaryText.length > 4096) {
+            summaryText = summaryText.substring(0, 4090) + '...';
+        }
+
+        // Save only the summary text to the project table
+        await updateProjectFeedbackSummary(project.id, summary);
+
+        await ctx.api.editMessageText(
+            loadingMsg.chat.id,
+            loadingMsg.message_id,
+            summaryText,
+            { parse_mode: 'Markdown' }
+        );
+    } catch (error) {
+        console.error("Error generating summary:", error);
+        try {
+            await ctx.api.editMessageText(
+                loadingMsg.chat.id,
+                loadingMsg.message_id,
+                `📊 *Summary for ${project.title}*\n\nFound ${feedback.length} feedback items.\n\n❌ Error generating summary: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                { parse_mode: 'Markdown' }
+            );
+        } catch (editError) {
+            console.error("Error editing message:", editError);
+        }
+    } finally {
+        // Always remove from ongoing set when done
+        ongoingSummaries.delete(project.id);
+    }
 }

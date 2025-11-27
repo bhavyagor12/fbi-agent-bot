@@ -27,6 +27,11 @@ export async function handleMessage(ctx: Context) {
   const message = ctx.message;
   if (!message) return;
 
+  // Skip commands - they are handled by command handlers
+  if (message.text?.startsWith('/')) {
+    return;
+  }
+
   const replyTo = message.reply_to_message;
   const text = message.text || message.caption || "";
 
