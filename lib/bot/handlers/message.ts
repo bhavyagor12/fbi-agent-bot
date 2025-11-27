@@ -131,11 +131,12 @@ export async function handleMessage(ctx: Context) {
           analyzeFeedback(text, project.summary, !!mediaUrl),
           generateEmbedding(text),
           getFeedbackEmbeddingsByProjectId(projectId),
-        ]).then(async ([scores, embedding, existingFeedbackResult]) => {
-          if (!scores) {
-            console.error("Failed to analyze feedback");
-            return;
-          }
+        ])
+          .then(async ([scores, embedding, existingFeedbackResult]) => {
+            if (!scores) {
+              console.error("Failed to analyze feedback");
+              return;
+            }
 
           // Calculate originality score using semantic similarity
           let originalityScore = 10; // Default for first feedback
@@ -221,11 +222,14 @@ export async function handleMessage(ctx: Context) {
             originality: originalityScore,
           });
 
-          await updateUserXP(message.from.id, feedbackXP);
-          console.log(
-            `Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${originalityScore})`
-          );
-        });
+            await updateUserXP(message.from.id, feedbackXP);
+            console.log(
+              `Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${originalityScore})`
+            );
+          })
+          .catch((error) => {
+            console.error("Error in async feedback processing:", error);
+          });
       }
     }
   }

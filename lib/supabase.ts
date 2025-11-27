@@ -84,7 +84,8 @@ export async function getProjectById(id: number) {
         score_evidence,
         score_constructiveness,
         score_tone,
-        users(first_name, last_name, username)
+        score_originality,
+        users(first_name, last_name, username, xp, tier)
       )
     `
     )
@@ -148,7 +149,19 @@ export async function updateFeedbackScores(
     score_originality?: number;
   }
 ) {
-  return await supabaseServer.from("feedback").update(scores).eq("id", id);
+  console.log(`Updating feedback ${id} with scores:`, scores);
+  const result = await supabaseServer
+    .from("feedback")
+    .update(scores)
+    .eq("id", id);
+
+  if (result.error) {
+    console.error(`Error updating feedback ${id} scores:`, result.error);
+  } else {
+    console.log(`Successfully updated feedback ${id} with scores`);
+  }
+
+  return result;
 }
 
 export async function getFeedbackByProjectId(projectId: number) {
@@ -207,11 +220,21 @@ export async function updateUserXP(userId: number, xpToAdd: number) {
   const newXP = (user.xp || 0) + xpToAdd;
   const newTier = calculateTier(newXP);
 
+  console.log(
+    `Updating user ${userId}: ${user.xp || 0} + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
+  );
+
   // Update user
-  return await supabaseServer
+  const result = await supabaseServer
     .from("users")
     .update({ xp: newXP, tier: newTier })
     .eq("telegram_user_id", userId);
+
+  if (result.error) {
+    console.error("Error updating user XP:", result.error);
+  }
+
+  return result;
 }
 
 /**

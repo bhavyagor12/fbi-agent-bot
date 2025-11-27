@@ -20,6 +20,8 @@ interface UserInfo {
   first_name: string | null;
   last_name: string | null;
   username: string | null;
+  xp?: number | null;
+  tier?: string | null;
 }
 
 interface Feedback {
@@ -35,6 +37,7 @@ interface Feedback {
   score_evidence: number | null;
   score_constructiveness: number | null;
   score_tone: number | null;
+  score_originality: number | null;
   users: UserInfo;
 }
 
@@ -199,6 +202,7 @@ export default function ProjectDetailsPage() {
                   <TableRow>
                     <TableHead className="w-[300px]">User</TableHead>
                     <TableHead>Feedback</TableHead>
+                    <TableHead className="w-[150px]">XP & Tier</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -256,7 +260,7 @@ export default function ProjectDetailsPage() {
                               )}
                               {(feedback.score_relevance !== null ||
                                 feedback.score_depth !== null) && (
-                                <div className="flex gap-2 mt-2 text-xs">
+                                <div className="flex flex-wrap gap-2 mt-2 text-xs">
                                   {feedback.score_relevance !== null && (
                                     <span className="px-2 py-1 bg-primary/10 text-primary rounded">
                                       Relevance: {feedback.score_relevance}/10
@@ -267,13 +271,43 @@ export default function ProjectDetailsPage() {
                                       Depth: {feedback.score_depth}/10
                                     </span>
                                   )}
+                                  {feedback.score_evidence !== null && (
+                                    <span className="px-2 py-1 bg-primary/10 text-primary rounded">
+                                      Evidence: {feedback.score_evidence}/10
+                                    </span>
+                                  )}
                                   {feedback.score_constructiveness !== null && (
                                     <span className="px-2 py-1 bg-primary/10 text-primary rounded">
                                       Constructiveness:{" "}
                                       {feedback.score_constructiveness}/10
                                     </span>
                                   )}
+                                  {feedback.score_tone !== null && (
+                                    <span className="px-2 py-1 bg-primary/10 text-primary rounded">
+                                      Tone: {feedback.score_tone}/10
+                                    </span>
+                                  )}
+                                  {feedback.score_originality !== null && (
+                                    <span className="px-2 py-1 bg-green-500/10 text-green-500 rounded">
+                                      Originality: {feedback.score_originality}/10
+                                    </span>
+                                  )}
                                 </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            <div className="flex flex-col gap-1">
+                              {feedback.users?.xp !== undefined &&
+                                feedback.users.xp !== null && (
+                                  <span className="text-sm font-medium text-foreground">
+                                    {feedback.users.xp} XP
+                                  </span>
+                                )}
+                              {feedback.users?.tier && (
+                                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded w-fit capitalize">
+                                  {feedback.users.tier}
+                                </span>
                               )}
                             </div>
                           </TableCell>
@@ -283,7 +317,7 @@ export default function ProjectDetailsPage() {
                   ) : (
                     <TableRow>
                       <TableCell
-                        colSpan={2}
+                        colSpan={3}
                         className="h-24 text-center text-muted-foreground"
                       >
                         {project.feedback.length === 0
