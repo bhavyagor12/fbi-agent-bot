@@ -180,14 +180,21 @@ export async function getFeedbackByMessageId(messageId: number) {
 }
 
 /**
- * Get feedback embeddings for a project to perform semantic similarity search
+ * Find similar feedback using vector similarity search
+ * Returns the most similar feedback items with their similarity scores
  */
-export async function getFeedbackEmbeddingsByProjectId(projectId: number) {
-  return await supabaseServer
-    .from("feedback")
-    .select("id, content, content_embedding, created_at")
-    .eq("project_id", projectId)
-    .not("content_embedding", "is", null);
+export async function findSimilarFeedback(
+  projectId: number,
+  embedding: number[],
+  limit: number = 5
+) {
+  // Use RPC to call a Postgres function that does vector similarity search
+  // The function should return similarity scores directly
+  return await supabaseServer.rpc("match_feedback", {
+    query_embedding: embedding,
+    match_project_id: projectId,
+    match_count: limit,
+  });
 }
 
 /**
@@ -221,7 +228,9 @@ export async function updateUserXP(userId: number, xpToAdd: number) {
   const newTier = calculateTier(newXP);
 
   console.log(
-    `Updating user ${userId}: ${user.xp || 0} + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
+    `Updating user ${userId}: ${
+      user.xp || 0
+    } + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
   );
 
   // Update user

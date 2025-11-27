@@ -9,17 +9,19 @@ import {
   getProjectById,
   updateFeedbackScores,
   updateUserXP,
-  getFeedbackEmbeddingsByProjectId,
+  findSimilarFeedback,
   updateFeedbackEmbedding,
 } from "../../supabase";
 import { calculateFeedbackXP } from "../../xp";
 import { analyzeFeedback } from "../../ai";
-import {
-  generateEmbedding,
-  cosineSimilarity,
-  calculateOriginalityScore,
-  calculateTimeWeight,
-} from "../../embeddings";
+import { generateEmbedding, calculateOriginalityScore } from "../../embeddings";
+
+type SimilarFeedback = {
+  id: number;
+  content: string;
+  created_at: string;
+  similarity: number;
+};
 
 export async function handleMessage(ctx: Context) {
   const message = ctx.message;
@@ -130,98 +132,76 @@ export async function handleMessage(ctx: Context) {
         Promise.all([
           analyzeFeedback(text, project.summary, !!mediaUrl),
           generateEmbedding(text),
-          getFeedbackEmbeddingsByProjectId(projectId),
         ])
-          .then(async ([scores, embedding, existingFeedbackResult]) => {
+          .then(async ([scores, embedding]) => {
             if (!scores) {
               console.error("Failed to analyze feedback");
               return;
             }
 
-          // Calculate originality score using semantic similarity
-          let originalityScore = 10; // Default for first feedback
+            // Calculate originality score using semantic similarity
+            let originalityScore = 10; // Default for first feedback
 
-          if (embedding) {
-            // Store the embedding
-            await updateFeedbackEmbedding(savedFeedback.id, embedding);
+            if (embedding) {
+              // Store the embedding
+              await updateFeedbackEmbedding(savedFeedback.id, embedding);
 
-            // Get existing feedback embeddings (excluding current one)
-            const { data: existingFeedback } = existingFeedbackResult;
+              // Use Supabase's built-in vector similarity search
+              const { data: similarFeedback, error: similarityError } =
+                await findSimilarFeedback(projectId, embedding, 5);
 
-            if (existingFeedback && existingFeedback.length > 0) {
-              // Filter out current feedback and only those with embeddings
-              const otherFeedback = existingFeedback.filter(
-                (f) =>
-                  f.id !== savedFeedback.id &&
-                  f.content_embedding &&
-                  Array.isArray(f.content_embedding)
-              );
+              if (similarityError) {
+                console.error(
+                  "Error finding similar feedback:",
+                  similarityError
+                );
+              } else if (similarFeedback && similarFeedback.length > 0) {
+                // Filter out the current feedback (it might match itself)
+                const otherFeedback = (
+                  similarFeedback as SimilarFeedback[]
+                ).filter((f) => f.id !== savedFeedback.id);
 
-              if (otherFeedback.length > 0) {
-                // Calculate similarity with all existing feedback
-                const similarities: number[] = [];
-                const weights: number[] = [];
+                if (otherFeedback.length > 0) {
+                  // Use the similarity scores directly from the search results
+                  const similarities = otherFeedback.map((f) => f.similarity);
 
-                for (const other of otherFeedback) {
-                  try {
-                    const similarity = cosineSimilarity(
-                      embedding,
-                      other.content_embedding as number[]
-                    );
-                    const weight = calculateTimeWeight(
-                      new Date(other.created_at)
-                    );
-
-                    similarities.push(similarity);
-                    weights.push(weight);
-                  } catch (error) {
-                    console.error("Error calculating similarity:", error);
-                  }
-                }
-                console.log("similarities", similarities);
-                if (similarities.length > 0) {
-                  
-                  originalityScore = calculateOriginalityScore(
-                    similarities,
-                    weights
-                  );
+                  originalityScore = calculateOriginalityScore(similarities);
                   console.log(
-                    `Originality score: ${originalityScore} (based on ${similarities.length} comparisons)`
+                    `Originality score: ${originalityScore} (based on top ${similarities.length} matches)`
                   );
                   console.log(
                     `Top similarities: ${similarities
                       .slice(0, 3)
-                      .map((s) => s.toFixed(3))
+                      .map((s: number) => s.toFixed(3))
                       .join(", ")}`
                   );
                 }
               }
+            } else {
+              console.warn(
+                "Failed to generate embedding, using default originality score"
+              );
             }
-          } else {
-            console.warn(
-              "Failed to generate embedding, using default originality score"
-            );
-          }
 
-          // Update feedback scores including originality
-          await updateFeedbackScores(savedFeedback.id, {
-            score_relevance: scores.relevance,
-            score_depth: scores.depth,
-            score_evidence: scores.evidence,
-            score_constructiveness: scores.constructiveness,
-            score_tone: scores.tone,
-            score_originality: originalityScore,
-          });
+            // Update feedback scores including originality
+            await updateFeedbackScores(savedFeedback.id, {
+              score_relevance: scores.relevance,
+              score_depth: scores.depth,
+              score_evidence: scores.evidence,
+              score_constructiveness: scores.constructiveness,
+              score_tone: scores.tone,
+              score_originality: originalityScore,
+            });
 
-          // Award XP for feedback
-          const feedbackXP = calculateFeedbackXP({
-            relevance: scores.relevance,
-            depth: scores.depth,
-            evidence: scores.evidence,
-            constructiveness: scores.constructiveness,
-            tone: scores.tone,
-            originality: originalityScore,
-          });
+            // Award XP for feedback
+            const feedbackXP = calculateFeedbackXP({
+              relevance: scores.relevance,
+              depth: scores.depth,
+              evidence: scores.evidence,
+              constructiveness: scores.constructiveness,
+              tone: scores.tone,
+              originality: originalityScore,
+            });
 
             await updateUserXP(message.from.id, feedbackXP);
             console.log(
