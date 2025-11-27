@@ -19,6 +19,11 @@ export async function handleSummaryCommand(ctx: Context) {
         return ctx.reply('Project not found. Make sure you are replying to the original project post.');
     }
 
+    // Check if the user is the project owner
+    if (!ctx.message?.from || project.user_id !== ctx.message.from.id) {
+        return ctx.reply('❌ Only the project owner can generate summaries.');
+    }
+
     // Fetch all feedback
     const { data: feedback, error: feedbackError } = await getFeedbackByProjectId(project.id);
 
