@@ -145,7 +145,7 @@ export async function updateFeedbackScores(
     score_evidence: number;
     score_constructiveness: number;
     score_tone: number;
-    score_originality: number;
+    score_originality?: number;
   }
 ) {
   return await supabaseServer.from("feedback").update(scores).eq("id", id);
