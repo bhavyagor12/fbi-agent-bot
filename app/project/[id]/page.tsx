@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getScoreColor, getTierColor, UserTier } from "@/lib/colors";
 
 // Extended Project Interface
 interface UserInfo {
@@ -96,7 +97,7 @@ export default function ProjectDetailsPage() {
 
   if (isError || !project) {
     return (
-      <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 pb-20">
+      <main className="min-h-screen bg-linear-to-br from-background via-background to-muted/20 pb-20">
         <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
           <div className="text-center space-y-4">
             <h1 className="text-2xl font-bold text-foreground">
@@ -262,34 +263,83 @@ export default function ProjectDetailsPage() {
                                 feedback.score_depth !== null) && (
                                 <div className="flex flex-wrap gap-2 mt-2 text-xs">
                                   {feedback.score_relevance !== null && (
-                                    <span className="px-2 py-1 bg-primary/10 text-primary rounded">
+                                    <span
+                                      className={`px-2 py-1 rounded ${
+                                        getScoreColor(feedback.score_relevance)
+                                          .bg
+                                      } ${
+                                        getScoreColor(feedback.score_relevance)
+                                          .text
+                                      }`}
+                                    >
                                       Relevance: {feedback.score_relevance}/10
                                     </span>
                                   )}
                                   {feedback.score_depth !== null && (
-                                    <span className="px-2 py-1 bg-primary/10 text-primary rounded">
+                                    <span
+                                      className={`px-2 py-1 rounded ${
+                                        getScoreColor(feedback.score_depth).bg
+                                      } ${
+                                        getScoreColor(feedback.score_depth).text
+                                      }`}
+                                    >
                                       Depth: {feedback.score_depth}/10
                                     </span>
                                   )}
                                   {feedback.score_evidence !== null && (
-                                    <span className="px-2 py-1 bg-primary/10 text-primary rounded">
+                                    <span
+                                      className={`px-2 py-1 rounded ${
+                                        getScoreColor(feedback.score_evidence)
+                                          .bg
+                                      } ${
+                                        getScoreColor(feedback.score_evidence)
+                                          .text
+                                      }`}
+                                    >
                                       Evidence: {feedback.score_evidence}/10
                                     </span>
                                   )}
                                   {feedback.score_constructiveness !== null && (
-                                    <span className="px-2 py-1 bg-primary/10 text-primary rounded">
+                                    <span
+                                      className={`px-2 py-1 rounded ${
+                                        getScoreColor(
+                                          feedback.score_constructiveness
+                                        ).bg
+                                      } ${
+                                        getScoreColor(
+                                          feedback.score_constructiveness
+                                        ).text
+                                      }`}
+                                    >
                                       Constructiveness:{" "}
                                       {feedback.score_constructiveness}/10
                                     </span>
                                   )}
                                   {feedback.score_tone !== null && (
-                                    <span className="px-2 py-1 bg-primary/10 text-primary rounded">
+                                    <span
+                                      className={`px-2 py-1 rounded ${
+                                        getScoreColor(feedback.score_tone).bg
+                                      } ${
+                                        getScoreColor(feedback.score_tone).text
+                                      }`}
+                                    >
                                       Tone: {feedback.score_tone}/10
                                     </span>
                                   )}
                                   {feedback.score_originality !== null && (
-                                    <span className="px-2 py-1 bg-green-500/10 text-green-500 rounded">
-                                      Originality: {feedback.score_originality}/10
+                                    <span
+                                      className={`px-2 py-1 rounded ${
+                                        getScoreColor(
+                                          feedback.score_originality
+                                        ).bg
+                                      } ${
+                                        getScoreColor(
+                                          feedback.score_originality
+                                        ).text
+                                      }`}
+                                    >
+                                      Originality: {feedback.score_originality}
+                                      /10
                                     </span>
                                   )}
                                 </div>
@@ -305,8 +355,22 @@ export default function ProjectDetailsPage() {
                                   </span>
                                 )}
                               {feedback.users?.tier && (
-                                <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded w-fit capitalize">
-                                  {feedback.users.tier}
+                                <span
+                                  className={`text-xs px-2 py-0.5 rounded w-fit font-semibold ${
+                                    getTierColor(
+                                      feedback.users.tier as UserTier
+                                    ).bg
+                                  } ${
+                                    getTierColor(
+                                      feedback.users.tier as UserTier
+                                    ).text
+                                  }`}
+                                >
+                                  {
+                                    getTierColor(
+                                      feedback.users.tier as UserTier
+                                    ).label
+                                  }
                                 </span>
                               )}
                             </div>
