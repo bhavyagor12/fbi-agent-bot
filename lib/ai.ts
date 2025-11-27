@@ -15,7 +15,7 @@ export async function analyzeFeedback(
   hasMedia: boolean
 ): Promise<FeedbackScore | null> {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.OPENAI_FBI_KEY;
     if (!apiKey) {
       console.error("OPENAI_API_KEY is not set");
       return null;
@@ -29,7 +29,7 @@ export async function analyzeFeedback(
     );
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5-mini",
       messages: [
         {
           role: "user",
@@ -45,7 +45,6 @@ export async function analyzeFeedback(
       return null;
     }
 
-    console.log("OpenAI Response:", text);
     // Clean up code blocks if present
     const cleanText = text
       .replace(/```json/g, "")

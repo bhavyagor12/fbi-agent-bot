@@ -5,12 +5,11 @@ import OpenAI from 'openai';
  */
 export async function generateEmbedding(text: string): Promise<number[] | null> {
     try {
-        const apiKey = process.env.OPENAI_API_KEY;
+        const apiKey = process.env.OPENAI_FBI_KEY;
         if (!apiKey) {
-            console.error('OPENAI_API_KEY is not set');
-            return null;
+          console.error("OPENAI_API_KEY is not set");
+          return null;
         }
-        
         const openai = new OpenAI({ apiKey });
         
         const response = await openai.embeddings.create({

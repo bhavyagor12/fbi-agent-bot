@@ -178,8 +178,9 @@ export async function handleMessage(ctx: Context) {
                     console.error("Error calculating similarity:", error);
                   }
                 }
-
+                console.log("similarities", similarities);
                 if (similarities.length > 0) {
+                  
                   originalityScore = calculateOriginalityScore(
                     similarities,
                     weights
