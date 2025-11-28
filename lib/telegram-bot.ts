@@ -1,5 +1,7 @@
 import { Bot } from "grammy";
 import { handleStartProject } from "./bot/handlers/startProject";
+import { handleHelpCommand } from "./bot/handlers/help";
+
 import {
   handleFeedbackCommand,
   handleFeedbackSelection,
@@ -24,6 +26,10 @@ bot.callbackQuery(/^feedback_select:(.+)$/, handleFeedbackSelection);
 
 // Command: /summary (Reply to project post)
 bot.command("summary", handleSummaryCommand);
+
+// Command: /help
+bot.command("help", handleHelpCommand);
+
 
 // Handle Replies (Feedback) & Mentions
 bot.on("message", handleMessage);
