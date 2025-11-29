@@ -418,7 +418,8 @@ export async function updateUserXP(userId: number, xpToAdd: number) {
   const newTier = calculateTier(newXP);
 
   console.log(
-    `Updating user ${userId}: ${user.xp || 0
+    `Updating user ${userId}: ${
+      user.xp || 0
     } + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
   );
 
@@ -461,4 +462,19 @@ export async function getUserStats(userId: number) {
     projectCount: projectCount || 0,
     feedbackCount: feedbackCount || 0,
   };
+}
+
+// --- Whitelist Management ---
+
+/**
+ * Check if a wallet address is whitelisted
+ */
+export async function isWalletWhitelisted(walletAddress: string) {
+  const { data, error } = await supabaseServer
+    .from("whitelist")
+    .select("id")
+    .eq("wallet_address", walletAddress.toLowerCase())
+    .single();
+
+  return { isWhitelisted: !!data && !error, error };
 }

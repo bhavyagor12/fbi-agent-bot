@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search, Plus, Settings as SettingsIcon } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Settings as SettingsIcon,
+  ShieldCheck,
+} from "lucide-react";
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import ProjectCard from "@/components/project-card";
@@ -43,8 +48,37 @@ function useDebounce<T>(value: T, delay: number): T {
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const { authenticated, ready } = usePrivy();
+  const [isWhitelisted, setIsWhitelisted] = useState(false);
+  const { authenticated, ready, user } = usePrivy();
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
+
+  // Get wallet address
+  const walletAddress = user?.wallet?.address;
+
+  // Check if wallet is whitelisted
+  useEffect(() => {
+    async function checkWhitelist() {
+      if (!authenticated || !walletAddress) {
+        setIsWhitelisted(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(
+          `/api/checkWhitelist?wallet=${encodeURIComponent(walletAddress)}`
+        );
+        const data = await res.json();
+        setIsWhitelisted(data.isWhitelisted);
+      } catch (error) {
+        console.error("Error checking whitelist:", error);
+        setIsWhitelisted(false);
+      }
+    }
+
+    if (ready) {
+      checkWhitelist();
+    }
+  }, [authenticated, walletAddress, ready]);
 
   const {
     data: projects = [],
@@ -55,8 +89,8 @@ export default function HomePage() {
     queryFn: async () => {
       const url = debouncedSearchQuery
         ? `/api/getAllActiveProjects/query?query=${encodeURIComponent(
-          debouncedSearchQuery
-        )}`
+            debouncedSearchQuery
+          )}`
         : "/api/getAllActiveProjects";
       const res = await fetch(url);
       if (!res.ok) {
@@ -82,6 +116,14 @@ export default function HomePage() {
             <div className="flex items-center gap-3">
               {authenticated && (
                 <>
+                  {isWhitelisted && (
+                    <Link href="/review">
+                      <button className="flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 backdrop-blur-sm px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 transition-all hover:bg-amber-500/20">
+                        <ShieldCheck className="h-4 w-4" />
+                        Review Projects
+                      </button>
+                    </Link>
+                  )}
                   <Link href="/settings">
                     <button className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/80 backdrop-blur-sm px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-card">
                       <SettingsIcon className="h-4 w-4" />
