@@ -44,13 +44,15 @@ export async function getOrUpsertUserByWallet(
     last_name?: string;
   }
 ) {
-  const { data: existingUser } = await getUserByWallet(walletAddress);
+  // Normalize to lowercase for consistent storage and lookup
+  const normalizedAddress = walletAddress.toLowerCase();
+  const { data: existingUser } = await getUserByWallet(normalizedAddress);
   if (existingUser) return { data: existingUser, error: null };
 
   return await supabaseServer
     .from("users")
     .insert({
-      wallet_address: walletAddress,
+      wallet_address: normalizedAddress,
       ...profile,
     })
     .select()
@@ -59,10 +61,12 @@ export async function getOrUpsertUserByWallet(
 
 // Get user by wallet address
 export async function getUserByWallet(walletAddress: string) {
+  // Normalize to lowercase for consistent lookup
+  const normalizedAddress = walletAddress.toLowerCase();
   return await supabaseServer
     .from("users")
     .select("*")
-    .eq("wallet_address", walletAddress)
+    .eq("wallet_address", normalizedAddress)
     .single();
 }
 
@@ -71,8 +75,11 @@ export async function linkTelegramToWallet(
   telegramUserId: number,
   walletAddress: string
 ) {
+  // Normalize to lowercase for consistent lookup
+  const normalizedAddress = walletAddress.toLowerCase();
+  
   // First check if wallet user exists
-  const { data: walletUser } = await getUserByWallet(walletAddress);
+  const { data: walletUser } = await getUserByWallet(normalizedAddress);
   if (!walletUser) {
     return { data: null, error: new Error("Wallet user not found") };
   }
@@ -81,7 +88,7 @@ export async function linkTelegramToWallet(
   return await supabaseServer
     .from("users")
     .update({ telegram_user_id: telegramUserId })
-    .eq("wallet_address", walletAddress)
+    .eq("wallet_address", normalizedAddress)
     .select()
     .single();
 }
@@ -155,6 +162,7 @@ export async function getProjectById(id: number) {
       summary, 
       feedback_summary,
       created_at,
+      user_id,
       users(first_name, last_name, username),
       feedback(
         id, 

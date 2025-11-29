@@ -13,8 +13,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getScoreColor, getTierColor, UserTier } from "@/lib/colors";
+import { usePrivy } from "@privy-io/react-auth";
+import { getUserByWallet } from "@/lib/supabase";
+import GenerateSummaryButton from "@/components/generate-summary-button";
 
 // Extended Project Interface
 interface UserInfo {
@@ -48,6 +51,7 @@ interface ProjectDetails {
   summary: string | null;
   feedback_summary: string | null;
   created_at: string;
+  user_id: number;
   users: UserInfo;
   feedback: Feedback[];
 }
@@ -64,6 +68,10 @@ const getUserDisplayName = (user: UserInfo | null): string => {
 export default function ProjectDetailsPage() {
   const params = useParams();
   const id = params.id as string;
+  const { user, authenticated } = usePrivy();
+  const queryClient = useQueryClient();
+  const [isOwner, setIsOwner] = React.useState(false);
+  const [checkingOwnership, setCheckingOwnership] = React.useState(true);
 
   const {
     data: project,
@@ -80,6 +88,29 @@ export default function ProjectDetailsPage() {
       return res.json();
     },
   });
+
+  // Check if current user is project owner
+  React.useEffect(() => {
+    async function checkOwnership() {
+      if (!authenticated || !user?.wallet?.address || !project) {
+        setCheckingOwnership(false);
+        return;
+      }
+
+      try {
+        const { data: userData } = await getUserByWallet(user.wallet.address);
+        if (userData && project.user_id && userData.id === project.user_id) {
+          setIsOwner(true);
+        }
+      } catch (error) {
+        console.error("Error checking ownership:", error);
+      } finally {
+        setCheckingOwnership(false);
+      }
+    }
+
+    checkOwnership();
+  }, [authenticated, user, project]);
 
   if (isLoading) {
     return (
@@ -182,6 +213,20 @@ export default function ProjectDetailsPage() {
               User Feedback
             </h2>
           </div>
+
+          {/* Generate Summary Button (Owner Only) */}
+          {!checkingOwnership && isOwner && (
+            <div className="flex justify-start">
+              <GenerateSummaryButton
+                projectId={project.id}
+                currentSummary={project.feedback_summary}
+                onSummaryGenerated={() => {
+                  // Invalidate the project query to refetch with new summary
+                  queryClient.invalidateQueries({ queryKey: ["project", id] });
+                }}
+              />
+            </div>
+          )}
 
           {/* Feedback Summary */}
           {project.feedback_summary && (
