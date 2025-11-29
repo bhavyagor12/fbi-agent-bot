@@ -13,7 +13,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import ProjectAttachmentsCarousel from "@/components/project-attachments-carousel";
 
 interface ProjectAttachment {
   id: number;
@@ -212,16 +211,6 @@ export default function ReviewPage() {
                           {project.summary}
                         </p>
                       </div>
-
-                      {/* Project Attachments */}
-                      {project.project_attachments &&
-                        project.project_attachments.length > 0 && (
-                          <div className="max-w-md">
-                            <ProjectAttachmentsCarousel
-                              attachments={project.project_attachments}
-                            />
-                          </div>
-                        )}
                     </div>
 
                     {/* Action Buttons */}

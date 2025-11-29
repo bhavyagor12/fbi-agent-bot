@@ -102,16 +102,16 @@ export default function HomePage() {
 
           {/* Projects Grid */}
           {isLoading ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 auto-rows-fr">
               {[...Array(6)].map((_, i) => (
                 <div
                   key={i}
-                  className="h-64 rounded-xl border bg-card/50 animate-pulse"
+                  className="h-96 rounded-xl border bg-card/50 animate-pulse"
                 />
               ))}
             </div>
           ) : projects.length > 0 ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 auto-rows-fr">
               {projects.map((project: Project) => (
                 <ProjectCard key={project.id} project={project} />
               ))}
