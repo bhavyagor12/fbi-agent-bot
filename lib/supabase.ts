@@ -418,8 +418,7 @@ export async function updateUserXP(userId: number, xpToAdd: number) {
   const newTier = calculateTier(newXP);
 
   console.log(
-    `Updating user ${userId}: ${
-      user.xp || 0
+    `Updating user ${userId}: ${user.xp || 0
     } + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
   );
 
@@ -445,4 +444,21 @@ export async function getUserXPAndTier(userId: number) {
     .select("xp, tier")
     .eq("telegram_user_id", userId)
     .single();
+}
+
+export async function getUserStats(userId: number) {
+  const { count: projectCount } = await supabaseServer
+    .from("projects")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  const { count: feedbackCount } = await supabaseServer
+    .from("feedback")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  return {
+    projectCount: projectCount || 0,
+    feedbackCount: feedbackCount || 0,
+  };
 }

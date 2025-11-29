@@ -4,7 +4,6 @@ import { usePrivy } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
 import { Settings as SettingsIcon, Wallet } from "lucide-react";
 import SettingsForm from "@/components/settings-form";
-import TelegramAuthWidget from "@/components/telegram-auth-widget";
 import WalletConnectButton from "@/components/wallet-connect-button";
 
 export default function SettingsPage() {
@@ -76,22 +75,8 @@ export default function SettingsPage() {
             {/* Main Content */}
             <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
                 <div className="space-y-6">
-                    {/* Wallet Info */}
-                    <div className="rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm p-6 shadow-lg">
-                        <h3 className="text-lg font-semibold text-foreground mb-2">
-                            Connected Wallet
-                        </h3>
-                        <div className="flex items-center gap-2 rounded-lg bg-background/50 px-4 py-3 font-mono text-sm text-muted-foreground">
-                            <Wallet className="h-4 w-4 text-primary" />
-                            {user?.wallet?.address}
-                        </div>
-                    </div>
-
                     {/* Profile Form */}
                     <SettingsForm />
-
-                    {/* Telegram Connection */}
-                    <TelegramAuthWidget />
                 </div>
             </div>
         </div>
