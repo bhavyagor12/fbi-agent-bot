@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { acceptProject, supabaseServer } from "@/lib/supabase";
+import {
+  acceptProject,
+  supabaseServer,
+  updateUserXPById,
+} from "@/lib/supabase";
+import { calculateProjectXP } from "@/lib/xp";
 
 export async function POST(
   request: NextRequest,
@@ -26,13 +31,30 @@ export async function POST(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
+    // Award XP to the user for creating the project
+    if (data.user_id) {
+      const projectXP = calculateProjectXP();
+      const xpResult = await updateUserXPById(data.user_id, projectXP);
+
+      if (xpResult.error) {
+        console.error("Error awarding project XP:", xpResult.error);
+        // Don't fail the request if XP update fails
+      } else {
+        console.log(
+          `Awarded ${projectXP} XP to user ${data.user_id} for project ${data.id}`
+        );
+      }
+    }
+
     // Create Telegram Forum Topic when project is accepted
     try {
       const botToken = process.env.TELEGRAM_BOT_TOKEN;
       const chatId = process.env.TELEGRAM_GROUP_ID;
 
       if (botToken && chatId && data.title && data.summary) {
-        const projectLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://fbi-bot.vercel.app"}/project/${data.id}`;
+        const projectLink = `${
+          process.env.NEXT_PUBLIC_APP_URL || "https://fbi-bot.vercel.app"
+        }/project/${data.id}`;
         let forumTopicId: number | undefined;
         let messageId: number | undefined;
 
@@ -76,7 +98,10 @@ export async function POST(
             throw new Error("Failed to create topic: " + topicData.description);
           }
         } catch (topicError) {
-          console.warn("Failed to create forum topic, falling back to message:", topicError);
+          console.warn(
+            "Failed to create forum topic, falling back to message:",
+            topicError
+          );
 
           // Fallback: Send regular message
           const msgResponse = await fetch(

@@ -19,7 +19,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Link href={`/project/${project.id}`} className="block">
-      <Card className="group flex flex-col transition-all hover:border-primary/50 hover:shadow-lg overflow-hidden h-full">
+      <Card className="group flex flex-col transition-all hover:border-primary/50 hover:shadow-lg overflow-hidden h-full py-2">
         <div className="flex flex-col flex-1 p-4">
           <div className="flex-1">
             <h3 className="text-lg font-semibold group-hover:text-primary transition-colors line-clamp-2 mb-2">

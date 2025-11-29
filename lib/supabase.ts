@@ -450,6 +450,51 @@ export async function updateUserXP(userId: number, xpToAdd: number) {
 }
 
 /**
+ * Update a user's XP by internal user ID (for wallet-based users)
+ */
+export async function updateUserXPById(
+  internalUserId: number,
+  xpToAdd: number
+) {
+  // Import here to avoid circular dependencies
+  const { calculateTier } = await import("./xp");
+
+  // Get current user by internal ID
+  const { data: user, error: getUserError } = await supabaseServer
+    .from("users")
+    .select("*")
+    .eq("id", internalUserId)
+    .single();
+
+  if (getUserError || !user) {
+    console.error("Error getting user for XP update:", getUserError);
+    return { data: null, error: getUserError };
+  }
+
+  // Calculate new XP
+  const newXP = (user.xp || 0) + xpToAdd;
+  const newTier = calculateTier(newXP);
+
+  console.log(
+    `Updating user ${internalUserId}: ${
+      user.xp || 0
+    } + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
+  );
+
+  // Update user by internal ID
+  const result = await supabaseServer
+    .from("users")
+    .update({ xp: newXP, tier: newTier })
+    .eq("id", internalUserId);
+
+  if (result.error) {
+    console.error("Error updating user XP:", result.error);
+  }
+
+  return result;
+}
+
+/**
  * Get a user's current XP and tier
  */
 export async function getUserXPAndTier(userId: number) {
