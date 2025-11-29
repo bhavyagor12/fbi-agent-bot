@@ -2,6 +2,7 @@ import { Context } from "grammy";
 import {
   createFeedback,
   getProjectByMessageId,
+  getProjectByForumTopicId,
   getFeedbackByMessageId,
   getOrUpsertUser,
   findProjectByName,
@@ -47,8 +48,21 @@ export async function handleMessage(ctx: Context) {
 
   let projectId: number | null = null;
 
-  // Case 1: Reply to a message
-  if (replyTo) {
+  // Case 0: Check if message is in a forum topic (NEW)
+  if (message.is_topic_message && message.message_thread_id) {
+    const { data: project } = await getProjectByForumTopicId(
+      message.message_thread_id
+    );
+    if (project) {
+      projectId = project.id;
+      console.log(
+        `Found project ${projectId} from forum topic ${message.message_thread_id}`
+      );
+    }
+  }
+
+  // Case 1: Reply to a message (EXISTING - fallback for non-topic groups)
+  if (!projectId && replyTo) {
     // 1a. Check if replying to a project root message
     const { data: project } = await getProjectByMessageId(replyTo.message_id);
     if (project) {
@@ -78,7 +92,7 @@ export async function handleMessage(ctx: Context) {
     }
   }
 
-  // Case 2: No reply, check for project name mention
+  // Case 2: No reply and not in topic, check for project name mention (EXISTING)
   if (!projectId && text) {
     // Get all active projects to check against
     const { data: projects } = await getActiveProjects();
