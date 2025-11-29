@@ -9,6 +9,7 @@ import {
     getUserByWallet,
     getUserStats,
 } from "@/lib/supabase";
+import { getTierColor, UserTier } from "@/lib/colors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -117,8 +118,16 @@ export default function SettingsForm() {
                 </Card>
                 <Card className="text-center">
                     <CardContent className="pt-6">
-                        <Star className="h-6 w-6 mx-auto text-purple-500 mb-2" />
-                        <div className="text-2xl font-bold capitalize">{stats.tier}</div>
+                        <Star
+                            className="h-6 w-6 mx-auto mb-2"
+                            style={{ color: getTierColor(stats.tier as UserTier).hex }}
+                        />
+                        <div
+                            className="text-2xl font-bold capitalize"
+                            style={{ color: getTierColor(stats.tier as UserTier).hex }}
+                        >
+                            {getTierColor(stats.tier as UserTier).label}
+                        </div>
                         <div className="text-xs text-muted-foreground uppercase tracking-wider">Tier</div>
                     </CardContent>
                 </Card>
