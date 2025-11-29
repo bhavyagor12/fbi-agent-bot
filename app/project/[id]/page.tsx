@@ -1,7 +1,6 @@
 "use client";
 
-import { ArrowLeft, MessageSquare, Award } from "lucide-react";
-import Link from "next/link";
+import { MessageSquare, Award } from "lucide-react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import {
@@ -12,6 +11,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getScoreColor, getTierColor, UserTier } from "@/lib/colors";
@@ -114,8 +122,8 @@ export default function ProjectDetailsPage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-linear-to-br from-background via-background to-muted/20 pb-20">
-        <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
+      <main className="min-h-screen bg-background pb-20">
+        <div className="mx-auto max-w-[90%] px-4 py-8 sm:px-6 lg:px-8">
           <div className="space-y-6 animate-pulse">
             <div className="h-12 bg-card rounded w-3/4"></div>
             <div className="h-6 bg-card rounded w-1/2"></div>
@@ -128,24 +136,17 @@ export default function ProjectDetailsPage() {
 
   if (isError || !project) {
     return (
-      <main className="min-h-screen bg-linear-to-br from-background via-background to-muted/20 pb-20">
-        <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
-          <div className="text-center space-y-4">
-            <h1 className="text-2xl font-bold text-foreground">
-              Project not found
-            </h1>
-            <p className="text-muted-foreground">
-              {error?.message ||
-                "The project you're looking for doesn't exist."}
-            </p>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 text-primary hover:underline"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Projects
-            </Link>
-          </div>
+      <main className="min-h-screen bg-background pb-20">
+        <div className="mx-auto max-w-[90%] px-4 py-8 sm:px-6 lg:px-8">
+          <Card className="max-w-md mx-auto text-center">
+            <CardHeader>
+              <CardTitle className="text-2xl">Project not found</CardTitle>
+              <CardDescription>
+                {error?.message ||
+                  "The project you're looking for doesn't exist."}
+              </CardDescription>
+            </CardHeader>
+          </Card>
         </div>
       </main>
     );
@@ -154,96 +155,79 @@ export default function ProjectDetailsPage() {
   const authorName = getUserDisplayName(project.users);
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 pb-20">
-      {/* Navigation */}
-      <div className="border-b border-border/50 bg-background/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="mx-auto max-w-[80%] px-4 py-4 sm:px-6 lg:px-8">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Projects
-          </Link>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8 space-y-12">
+    <main className="min-h-screen bg-background pb-20">
+      <div className="mx-auto max-w-[90%] px-4 py-8 sm:px-6 lg:px-8 space-y-8">
         {/* Header Section */}
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-              {project.title}
-            </h1>
-            <div className="flex items-center gap-3 pt-2">
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20">
-                <span className="text-sm font-bold text-primary-foreground">
-                  {authorName.charAt(0).toUpperCase()}
-                </span>
+        <Card>
+          <CardHeader>
+            <div className="space-y-4">
+              <CardTitle className="text-3xl md:text-4xl">
+                {project.title}
+              </CardTitle>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center">
+                  <span className="text-sm font-bold text-primary-foreground">
+                    {authorName.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">{authorName}</p>
+                  {project.users?.username && (
+                    <p className="text-xs text-muted-foreground">
+                      @{project.users.username}
+                    </p>
+                  )}
+                </div>
               </div>
-              <div className="flex flex-col">
-                <p className="text-sm font-medium text-foreground">
-                  {authorName}
-                </p>
-                {project.users?.username && (
-                  <p className="text-xs text-muted-foreground">
-                    @{project.users.username}
-                  </p>
-                )}
-              </div>
+              {project.summary && (
+                <CardDescription className="text-base leading-relaxed pt-2">
+                  {project.summary}
+                </CardDescription>
+              )}
             </div>
-          </div>
-
-          {project.summary && (
-            <div className="prose prose-invert max-w-none">
-              <p className="text-xl text-muted-foreground leading-relaxed">
-                {project.summary}
-              </p>
-            </div>
-          )}
-        </div>
-
-        <hr className="border-border/50" />
+          </CardHeader>
+        </Card>
 
         {/* Feedback Section */}
-        <section className="space-y-8">
-          <div className="flex items-center gap-3 mb-6">
-            <MessageSquare className="h-6 w-6 text-primary" />
-            <h2 className="text-2xl font-bold text-foreground">
-              User Feedback
-            </h2>
-          </div>
-
-          {/* Generate Summary Button (Owner Only) */}
-          {!checkingOwnership && isOwner && (
-            <div className="flex justify-start">
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <MessageSquare className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-bold text-foreground">
+                User Feedback
+              </h2>
+            </div>
+            {/* Generate Summary Button (Owner Only) */}
+            {!checkingOwnership && isOwner && (
               <GenerateSummaryButton
                 projectId={project.id}
                 currentSummary={project.feedback_summary}
                 onSummaryGenerated={() => {
-                  // Invalidate the project query to refetch with new summary
                   queryClient.invalidateQueries({ queryKey: ["project", id] });
                 }}
               />
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Feedback Summary */}
           {project.feedback_summary && (
-            <div className="bg-card/50 border border-border/50 rounded-xl p-6 md:p-8 shadow-sm">
-              <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Award className="h-5 w-5 text-yellow-500" />
-                Feedback Summary
-              </h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {project.feedback_summary}
-              </p>
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5 text-yellow-500" />
+                  Feedback Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground leading-relaxed">
+                  {project.feedback_summary}
+                </p>
+              </CardContent>
+            </Card>
           )}
           {/* Feedback List */}
-          <div className="space-y-4">
-            <div className="rounded-md border border-border/50 overflow-hidden">
-              <Table>
+          <Card>
+            <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[300px]">User</TableHead>
@@ -306,10 +290,11 @@ export default function ProjectDetailsPage() {
                               )}
                               {(feedback.score_relevance !== null ||
                                 feedback.score_depth !== null) && (
-                                <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                                <div className="flex flex-wrap gap-2 mt-2">
                                   {feedback.score_relevance !== null && (
-                                    <span
-                                      className={`px-2 py-1 rounded ${
+                                    <Badge
+                                      variant="secondary"
+                                      className={`${
                                         getScoreColor(feedback.score_relevance)
                                           .bg
                                       } ${
@@ -318,22 +303,24 @@ export default function ProjectDetailsPage() {
                                       }`}
                                     >
                                       Relevance: {feedback.score_relevance}/10
-                                    </span>
+                                    </Badge>
                                   )}
                                   {feedback.score_depth !== null && (
-                                    <span
-                                      className={`px-2 py-1 rounded ${
+                                    <Badge
+                                      variant="secondary"
+                                      className={`${
                                         getScoreColor(feedback.score_depth).bg
                                       } ${
                                         getScoreColor(feedback.score_depth).text
                                       }`}
                                     >
                                       Depth: {feedback.score_depth}/10
-                                    </span>
+                                    </Badge>
                                   )}
                                   {feedback.score_evidence !== null && (
-                                    <span
-                                      className={`px-2 py-1 rounded ${
+                                    <Badge
+                                      variant="secondary"
+                                      className={`${
                                         getScoreColor(feedback.score_evidence)
                                           .bg
                                       } ${
@@ -342,11 +329,12 @@ export default function ProjectDetailsPage() {
                                       }`}
                                     >
                                       Evidence: {feedback.score_evidence}/10
-                                    </span>
+                                    </Badge>
                                   )}
                                   {feedback.score_constructiveness !== null && (
-                                    <span
-                                      className={`px-2 py-1 rounded ${
+                                    <Badge
+                                      variant="secondary"
+                                      className={`${
                                         getScoreColor(
                                           feedback.score_constructiveness
                                         ).bg
@@ -358,22 +346,24 @@ export default function ProjectDetailsPage() {
                                     >
                                       Constructiveness:{" "}
                                       {feedback.score_constructiveness}/10
-                                    </span>
+                                    </Badge>
                                   )}
                                   {feedback.score_tone !== null && (
-                                    <span
-                                      className={`px-2 py-1 rounded ${
+                                    <Badge
+                                      variant="secondary"
+                                      className={`${
                                         getScoreColor(feedback.score_tone).bg
                                       } ${
                                         getScoreColor(feedback.score_tone).text
                                       }`}
                                     >
                                       Tone: {feedback.score_tone}/10
-                                    </span>
+                                    </Badge>
                                   )}
                                   {feedback.score_originality !== null && (
-                                    <span
-                                      className={`px-2 py-1 rounded ${
+                                    <Badge
+                                      variant="secondary"
+                                      className={`${
                                         getScoreColor(
                                           feedback.score_originality
                                         ).bg
@@ -385,23 +375,24 @@ export default function ProjectDetailsPage() {
                                     >
                                       Originality: {feedback.score_originality}
                                       /10
-                                    </span>
+                                    </Badge>
                                   )}
                                 </div>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
-                            <div className="flex flex-col gap-1">
+                          <TableCell>
+                            <div className="flex flex-col gap-2">
                               {feedback.users?.xp !== undefined &&
                                 feedback.users.xp !== null && (
-                                  <span className="text-sm font-medium text-foreground">
+                                  <span className="text-sm font-medium">
                                     {feedback.users.xp} XP
                                   </span>
                                 )}
                               {feedback.users?.tier && (
-                                <span
-                                  className={`text-xs px-2 py-0.5 rounded w-fit font-semibold ${
+                                <Badge
+                                  variant="secondary"
+                                  className={`w-fit ${
                                     getTierColor(
                                       feedback.users.tier as UserTier
                                     ).bg
@@ -416,7 +407,7 @@ export default function ProjectDetailsPage() {
                                       feedback.users.tier as UserTier
                                     ).label
                                   }
-                                </span>
+                                </Badge>
                               )}
                             </div>
                           </TableCell>
@@ -437,8 +428,7 @@ export default function ProjectDetailsPage() {
                   )}
                 </TableBody>
               </Table>
-            </div>
-          </div>
+            </Card>
         </section>
       </div>
     </main>

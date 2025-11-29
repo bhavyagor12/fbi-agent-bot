@@ -4,7 +4,15 @@ import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, XCircle, Loader2, ShieldAlert } from "lucide-react";
-import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 interface Project {
   id: number;
@@ -109,8 +117,8 @@ export default function ReviewPage() {
   // Loading state
   if (!ready || checkingWhitelist) {
     return (
-      <main className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
-        <div className="flex items-center justify-center min-h-screen">
+      <main className="min-h-screen bg-background">
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </main>
@@ -120,67 +128,50 @@ export default function ReviewPage() {
   // Not authenticated or not whitelisted
   if (!authenticated || !isWhitelisted) {
     return (
-      <main className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
-        <div className="flex items-center justify-center min-h-screen px-4">
-          <div className="text-center max-w-md">
-            <ShieldAlert className="h-16 w-16 text-destructive mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              Access Denied
-            </h1>
-            <p className="text-muted-foreground mb-6">
-              {!authenticated
-                ? "Please connect your wallet to access this page."
-                : "Your wallet address is not authorized to review projects."}
-            </p>
-            <Link
-              href="/"
-              className="inline-block rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90"
-            >
-              Back to Home
-            </Link>
-          </div>
+      <main className="min-h-screen bg-background">
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)] px-4">
+          <Card className="max-w-md text-center">
+            <CardHeader>
+              <ShieldAlert className="h-16 w-16 text-destructive mx-auto mb-4" />
+              <CardTitle className="text-2xl">Access Denied</CardTitle>
+              <CardDescription>
+                {!authenticated
+                  ? "Please connect your wallet to access this page."
+                  : "Your wallet address is not authorized to review projects."}
+              </CardDescription>
+            </CardHeader>
+          </Card>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
-      {/* Header */}
-      <div className="border-b border-border/50">
-        <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-foreground">
-                Review Pending Projects
-              </h1>
-              <p className="mt-2 text-lg text-muted-foreground">
-                Accept or reject projects awaiting approval
-              </p>
-            </div>
-            <Link
-              href="/"
-              className="rounded-lg border border-border/50 bg-card/80 backdrop-blur-sm px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-card"
-            >
-              Back to Home
-            </Link>
-          </div>
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto max-w-[90%] px-4 py-8 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Review Pending Projects
+          </h1>
+          <p className="mt-2 text-muted-foreground">
+            Accept or reject projects awaiting approval
+          </p>
         </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-6 text-sm text-muted-foreground">
-          {loadingProjects ? (
-            "Loading projects..."
-          ) : isError ? (
-            "Error loading projects"
-          ) : (
-            <>
-              {projects.length} project{projects.length !== 1 ? "s" : ""}{" "}
-              pending review
-            </>
-          )}
+        {/* Status Badge */}
+        <div className="mb-6">
+          <Badge variant="secondary">
+            {loadingProjects ? (
+              "Loading..."
+            ) : isError ? (
+              "Error loading projects"
+            ) : (
+              <>
+                {projects.length} project{projects.length !== 1 ? "s" : ""}{" "}
+                pending review
+              </>
+            )}
+          </Badge>
         </div>
 
         {/* Projects List */}
@@ -194,79 +185,73 @@ export default function ReviewPage() {
             ))}
           </div>
         ) : projects.length > 0 ? (
-          <div className="space-y-6">
+          <div className="space-y-4">
             {projects.map((project: Project) => (
-              <div
-                key={project.id}
-                className="rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm p-6 transition-all hover:border-border"
-              >
-                <div className="flex items-start justify-between gap-6">
-                  <div className="flex-1">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-1">
-                        <h3 className="text-xl font-semibold text-foreground mb-2">
-                          {project.title}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          Submitted by{" "}
-                          {project.users.first_name || project.users.username}{" "}
-                          {project.users.last_name} •{" "}
-                          {new Date(project.created_at).toLocaleDateString()}
-                        </p>
-                        <p className="text-foreground/80 line-clamp-3">
-                          {project.summary}
-                        </p>
-                      </div>
+              <Card key={project.id}>
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-6">
+                    <div className="flex-1">
+                      <CardTitle className="text-xl mb-2">
+                        {project.title}
+                      </CardTitle>
+                      <CardDescription className="mb-3">
+                        Submitted by{" "}
+                        {project.users.first_name || project.users.username}{" "}
+                        {project.users.last_name} •{" "}
+                        {new Date(project.created_at).toLocaleDateString()}
+                      </CardDescription>
+                      <p className="text-sm line-clamp-3">{project.summary}</p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col gap-3 min-w-[140px]">
+                      <Button
+                        onClick={() => acceptMutation.mutate(project.id)}
+                        disabled={
+                          acceptMutation.isPending || rejectMutation.isPending
+                        }
+                        className="bg-green-600 hover:bg-green-700 gap-2"
+                      >
+                        {acceptMutation.isPending &&
+                        acceptMutation.variables === project.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4" />
+                        )}
+                        Accept
+                      </Button>
+                      <Button
+                        onClick={() => rejectMutation.mutate(project.id)}
+                        disabled={
+                          acceptMutation.isPending || rejectMutation.isPending
+                        }
+                        variant="destructive"
+                        className="gap-2"
+                      >
+                        {rejectMutation.isPending &&
+                        rejectMutation.variables === project.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <XCircle className="h-4 w-4" />
+                        )}
+                        Reject
+                      </Button>
                     </div>
                   </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-3 min-w-[140px]">
-                    <button
-                      onClick={() => acceptMutation.mutate(project.id)}
-                      disabled={
-                        acceptMutation.isPending || rejectMutation.isPending
-                      }
-                      className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {acceptMutation.isPending &&
-                      acceptMutation.variables === project.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4" />
-                      )}
-                      Accept
-                    </button>
-                    <button
-                      onClick={() => rejectMutation.mutate(project.id)}
-                      disabled={
-                        acceptMutation.isPending || rejectMutation.isPending
-                      }
-                      className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {rejectMutation.isPending &&
-                      rejectMutation.variables === project.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <XCircle className="h-4 w-4" />
-                      )}
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              </div>
+                </CardHeader>
+              </Card>
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-border/50 p-12 text-center">
-            <CheckCircle className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
-            <h3 className="text-lg font-medium text-foreground mb-1">
-              No pending projects
-            </h3>
-            <p className="text-muted-foreground">
-              All projects have been reviewed
-            </p>
-          </div>
+          <Card className="border-dashed">
+            <CardContent className="pt-12 pb-12 text-center">
+              <CheckCircle className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
+              <CardTitle className="text-lg mb-1">
+                No pending projects
+              </CardTitle>
+              <CardDescription>All projects have been reviewed</CardDescription>
+            </CardContent>
+          </Card>
         )}
       </div>
     </main>

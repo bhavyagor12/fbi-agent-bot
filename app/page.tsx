@@ -1,18 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Search,
-  Plus,
-  Settings as SettingsIcon,
-  ShieldCheck,
-} from "lucide-react";
-import { usePrivy } from "@privy-io/react-auth";
-import Link from "next/link";
+import { Search } from "lucide-react";
 import ProjectCard from "@/components/project-card";
 import SearchBar from "@/components/search-bar";
-import WalletConnectButton from "@/components/wallet-connect-button";
-import CreateProjectForm from "@/components/create-project-form";
 import { useQuery } from "@tanstack/react-query";
 
 export interface Project {
@@ -47,38 +38,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [isWhitelisted, setIsWhitelisted] = useState(false);
-  const { authenticated, ready, user } = usePrivy();
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
-
-  // Get wallet address
-  const walletAddress = user?.wallet?.address;
-
-  // Check if wallet is whitelisted
-  useEffect(() => {
-    async function checkWhitelist() {
-      if (!authenticated || !walletAddress) {
-        setIsWhitelisted(false);
-        return;
-      }
-
-      try {
-        const res = await fetch(
-          `/api/checkWhitelist?wallet=${encodeURIComponent(walletAddress)}`
-        );
-        const data = await res.json();
-        setIsWhitelisted(data.isWhitelisted);
-      } catch (error) {
-        console.error("Error checking whitelist:", error);
-        setIsWhitelisted(false);
-      }
-    }
-
-    if (ready) {
-      checkWhitelist();
-    }
-  }, [authenticated, walletAddress, ready]);
 
   const {
     data: projects = [],
@@ -100,117 +60,68 @@ export default function HomePage() {
     },
   });
   return (
-    <main className="min-h-screen bg-linear-to-br from-background via-background to-muted/20">
-      {/* Header */}
-      <div className="border-b border-border/50">
-        <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight text-foreground">
-                FBI Project Archives
-              </h1>
-              <p className="mt-2 text-lg text-muted-foreground">
-                Read through feedback and reviews for the projects of our users
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {authenticated && (
-                <>
-                  {isWhitelisted && (
-                    <Link href="/review">
-                      <button className="flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 backdrop-blur-sm px-4 py-2 text-sm font-medium text-amber-600 dark:text-amber-400 transition-all hover:bg-amber-500/20">
-                        <ShieldCheck className="h-4 w-4" />
-                        Review Projects
-                      </button>
-                    </Link>
-                  )}
-                  <Link href="/settings">
-                    <button className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/80 backdrop-blur-sm px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-card">
-                      <SettingsIcon className="h-4 w-4" />
-                      Settings
-                    </button>
-                  </Link>
-                  <button
-                    onClick={() => setShowCreateForm(true)}
-                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create Project
-                  </button>
-                </>
-              )}
-              <WalletConnectButton />
-            </div>
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto max-w-[90%] px-4 py-8 sm:px-6 lg:px-8">
+        <div className="space-y-6">
+          {/* Header */}
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Project Archives
+            </h1>
+            <p className="mt-2 text-muted-foreground">
+              Browse and search through all active projects
+            </p>
           </div>
-        </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-8">
-          {/* Projects Grid */}
-          <div className="w-full">
-            {/* Search Bar */}
-            <SearchBar
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-            />
+          {/* Search Bar */}
+          <SearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
 
-            {/* Results Count */}
-            <div className="mb-6 text-sm text-muted-foreground">
-              {isLoading ? (
-                "Loading..."
-              ) : isError ? (
-                "Error loading projects"
-              ) : (
-                <>
-                  {projects.length} project
-                  {projects.length !== 1 ? "s" : ""} found
-                </>
-              )}
-            </div>
-
-            {/* Projects Grid */}
+          {/* Results Count */}
+          <div className="text-sm text-muted-foreground">
             {isLoading ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {[...Array(6)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-64 rounded-xl border bg-card/50 animate-pulse"
-                  />
-                ))}
-              </div>
-            ) : projects.length > 0 ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {projects.map((project: Project) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
-              </div>
+              "Loading..."
+            ) : isError ? (
+              "Error loading projects"
             ) : (
-              <div className="rounded-lg border border-dashed border-border/50 p-12 text-center">
-                <Search className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
-                <h3 className="text-lg font-medium text-foreground mb-1">
-                  No projects found
-                </h3>
-                <p className="text-muted-foreground">
-                  Try adjusting your search or filter criteria
-                </p>
-              </div>
+              <>
+                {projects.length} project
+                {projects.length !== 1 ? "s" : ""} found
+              </>
             )}
           </div>
+
+          {/* Projects Grid */}
+          {isLoading ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="h-64 rounded-xl border bg-card/50 animate-pulse"
+                />
+              ))}
+            </div>
+          ) : projects.length > 0 ? (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {projects.map((project: Project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-border/50 p-12 text-center">
+              <Search className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
+              <h3 className="text-lg font-medium text-foreground mb-1">
+                No projects found
+              </h3>
+              <p className="text-muted-foreground">
+                Try adjusting your search or filter criteria
+              </p>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Create Project Modal */}
-      {showCreateForm && (
-        <CreateProjectForm
-          onClose={() => setShowCreateForm(false)}
-          onSuccess={() => {
-            // Refetch projects
-            window.location.reload();
-          }}
-        />
-      )}
     </main>
   );
 }

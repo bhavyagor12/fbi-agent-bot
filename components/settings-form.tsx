@@ -9,6 +9,15 @@ import {
     getUserByWallet,
     getUserStats,
 } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
 
 export default function SettingsForm() {
     const { user, authenticated } = usePrivy();
@@ -99,145 +108,152 @@ export default function SettingsForm() {
         <div className="space-y-6">
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm p-4 text-center shadow-sm">
-                    <Trophy className="h-6 w-6 mx-auto text-yellow-500 mb-2" />
-                    <div className="text-2xl font-bold">{stats.xp}</div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider">XP</div>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm p-4 text-center shadow-sm">
-                    <Star className="h-6 w-6 mx-auto text-purple-500 mb-2" />
-                    <div className="text-2xl font-bold capitalize">{stats.tier}</div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Tier</div>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm p-4 text-center shadow-sm">
-                    <FolderOpen className="h-6 w-6 mx-auto text-blue-500 mb-2" />
-                    <div className="text-2xl font-bold">{stats.projectCount}</div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Projects</div>
-                </div>
-                <div className="rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm p-4 text-center shadow-sm">
-                    <MessageSquare className="h-6 w-6 mx-auto text-green-500 mb-2" />
-                    <div className="text-2xl font-bold">{stats.feedbackCount}</div>
-                    <div className="text-xs text-muted-foreground uppercase tracking-wider">Feedback</div>
-                </div>
+                <Card className="text-center">
+                    <CardContent className="pt-6">
+                        <Trophy className="h-6 w-6 mx-auto text-yellow-500 mb-2" />
+                        <div className="text-2xl font-bold">{stats.xp}</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider">XP</div>
+                    </CardContent>
+                </Card>
+                <Card className="text-center">
+                    <CardContent className="pt-6">
+                        <Star className="h-6 w-6 mx-auto text-purple-500 mb-2" />
+                        <div className="text-2xl font-bold capitalize">{stats.tier}</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider">Tier</div>
+                    </CardContent>
+                </Card>
+                <Card className="text-center">
+                    <CardContent className="pt-6">
+                        <FolderOpen className="h-6 w-6 mx-auto text-blue-500 mb-2" />
+                        <div className="text-2xl font-bold">{stats.projectCount}</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider">Projects</div>
+                    </CardContent>
+                </Card>
+                <Card className="text-center">
+                    <CardContent className="pt-6">
+                        <MessageSquare className="h-6 w-6 mx-auto text-green-500 mb-2" />
+                        <div className="text-2xl font-bold">{stats.feedbackCount}</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider">Feedback</div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Profile Form */}
-            <div className="rounded-xl border border-border/50 bg-card/80 backdrop-blur-sm p-6 shadow-lg">
-                <div className="mb-6">
-                    <h2 className="text-2xl font-bold text-foreground">Profile Settings</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Profile Settings</CardTitle>
+                    <CardDescription>
                         Complete your profile to start creating projects
-                    </p>
-                </div>
-
-                {/* Wallet Address Display */}
-                <div className="mb-6 rounded-lg bg-background/50 border border-border/50 p-4">
-                    <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                        Connected Wallet
-                    </label>
-                    <div className="font-mono text-sm text-foreground break-all">
-                        {user?.wallet?.address}
-                    </div>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label
-                            htmlFor="username"
-                            className="block text-sm font-medium text-foreground mb-2"
-                        >
-                            Telegram Username <span className="text-red-500">*</span>
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {/* Wallet Address Display */}
+                    <div className="rounded-lg bg-muted/50 p-4">
+                        <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
+                            Connected Wallet
                         </label>
-                        <div className="relative">
-                            <span className="absolute left-4 top-2.5 text-muted-foreground">@</span>
-                            <input
-                                type="text"
-                                id="username"
-                                value={formData.username}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, username: e.target.value.replace(/^@/, '') })
-                                }
-                                disabled={profileComplete}
-                                required
-                                className="w-full rounded-lg border border-border/50 bg-background/50 pl-8 pr-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                placeholder="username"
-                            />
+                        <div className="font-mono text-sm break-all">
+                            {user?.wallet?.address}
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label
-                                htmlFor="first_name"
-                                className="block text-sm font-medium text-foreground mb-2"
+                                htmlFor="username"
+                                className="block text-sm font-medium mb-2"
                             >
-                                First Name <span className="text-red-500">*</span>
+                                Telegram Username <span className="text-red-500">*</span>
                             </label>
-                            <input
-                                type="text"
-                                id="first_name"
-                                value={formData.first_name}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, first_name: e.target.value })
-                                }
-                                disabled={profileComplete}
-                                required
-                                className="w-full rounded-lg border border-border/50 bg-background/50 px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                placeholder="John"
-                            />
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 text-muted-foreground">@</span>
+                                <Input
+                                    type="text"
+                                    id="username"
+                                    value={formData.username}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, username: e.target.value.replace(/^@/, '') })
+                                    }
+                                    disabled={profileComplete}
+                                    required
+                                    className="pl-7"
+                                    placeholder="username"
+                                />
+                            </div>
                         </div>
 
-                        <div>
-                            <label
-                                htmlFor="last_name"
-                                className="block text-sm font-medium text-foreground mb-2"
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label
+                                    htmlFor="first_name"
+                                    className="block text-sm font-medium mb-2"
+                                >
+                                    First Name <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    type="text"
+                                    id="first_name"
+                                    value={formData.first_name}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, first_name: e.target.value })
+                                    }
+                                    disabled={profileComplete}
+                                    required
+                                    placeholder="John"
+                                />
+                            </div>
+
+                            <div>
+                                <label
+                                    htmlFor="last_name"
+                                    className="block text-sm font-medium mb-2"
+                                >
+                                    Last Name <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    type="text"
+                                    id="last_name"
+                                    value={formData.last_name}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, last_name: e.target.value })
+                                    }
+                                    disabled={profileComplete}
+                                    required
+                                    placeholder="Doe"
+                                />
+                            </div>
+                        </div>
+
+                        {!profileComplete && (
+                            <Button
+                                type="submit"
+                                disabled={saving}
+                                className="w-full gap-2"
                             >
-                                Last Name <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                                type="text"
-                                id="last_name"
-                                value={formData.last_name}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, last_name: e.target.value })
-                                }
-                                disabled={profileComplete}
-                                required
-                                className="w-full rounded-lg border border-border/50 bg-background/50 px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                placeholder="Doe"
-                            />
-                        </div>
-                    </div>
+                                {saving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Saving...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Save className="h-4 w-4" />
+                                        Save Profile
+                                    </>
+                                )}
+                            </Button>
+                        )}
 
-                    {!profileComplete && (
-                        <button
-                            type="submit"
-                            disabled={saving}
-                            className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            {saving ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Saving...
-                                </>
-                            ) : (
-                                <>
-                                    <Save className="h-4 w-4" />
-                                    Save Profile
-                                </>
-                            )}
-                        </button>
-                    )}
-
-                    {profileComplete && (
-                        <div className="rounded-lg bg-primary/10 border border-primary/20 p-4 text-center">
-                            <p className="text-sm font-medium text-primary">
-                                ✓ Profile complete! You can now create projects.
-                            </p>
-                        </div>
-                    )}
-                </form>
-            </div>
+                        {profileComplete && (
+                            <div className="rounded-lg bg-primary/10 border border-primary/20 p-4 text-center">
+                                <p className="text-sm font-medium text-primary">
+                                    ✓ Profile complete! You can now create projects.
+                                </p>
+                            </div>
+                        )}
+                    </form>
+                </CardContent>
+            </Card>
         </div>
     );
 }

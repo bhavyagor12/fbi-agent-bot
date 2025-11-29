@@ -4,6 +4,15 @@ import { useState, useRef, DragEvent } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { X, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
 import { validateFile } from "@/lib/supabase-storage";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface CreateProjectFormProps {
     onClose: () => void;
@@ -122,40 +131,32 @@ export default function CreateProjectForm({
     };
 
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-card/95 backdrop-blur-md rounded-2xl border border-border/50 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                {/* Header */}
-                <div className="sticky top-0 bg-card/95 backdrop-blur-md border-b border-border/50 px-6 py-4 flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-foreground">
-                        Create New Project
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="rounded-lg p-2 text-muted-foreground hover:bg-muted/20 hover:text-foreground transition-colors"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
-                </div>
+        <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                    <DialogTitle>Create New Project</DialogTitle>
+                    <DialogDescription>
+                        Share your project and get valuable feedback from the community
+                    </DialogDescription>
+                </DialogHeader>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Title */}
                     <div>
                         <label
                             htmlFor="title"
-                            className="block text-sm font-medium text-foreground mb-2"
+                            className="block text-sm font-medium mb-2"
                         >
                             Project Title
                             <span className="text-destructive ml-1">*</span>
                         </label>
-                        <input
+                        <Input
                             type="text"
                             id="title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             required
                             maxLength={100}
-                            className="w-full rounded-lg border border-border/50 bg-background/50 px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
                             placeholder="Enter project title..."
                         />
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -167,7 +168,7 @@ export default function CreateProjectForm({
                     <div>
                         <label
                             htmlFor="summary"
-                            className="block text-sm font-medium text-foreground mb-2"
+                            className="block text-sm font-medium mb-2"
                         >
                             Project Summary
                             <span className="text-destructive ml-1">*</span>
@@ -179,7 +180,7 @@ export default function CreateProjectForm({
                             required
                             rows={6}
                             maxLength={1000}
-                            className="w-full rounded-lg border border-border/50 bg-background/50 px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none transition-all"
+                            className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
                             placeholder="Describe your project in detail..."
                         />
                         <p className="mt-1 text-xs text-muted-foreground">
@@ -189,7 +190,7 @@ export default function CreateProjectForm({
 
                     {/* File Upload */}
                     <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
+                        <label className="block text-sm font-medium mb-2">
                             Attachments <span className="text-muted-foreground">(optional)</span>
                         </label>
 
@@ -254,18 +255,19 @@ export default function CreateProjectForm({
 
                     {/* Submit Button */}
                     <div className="flex gap-3 pt-4">
-                        <button
+                        <Button
                             type="button"
                             onClick={onClose}
                             disabled={uploading}
-                            className="flex-1 rounded-lg border border-border/50 bg-background/50 px-6 py-3 text-sm font-semibold text-foreground transition-all hover:bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+                            variant="outline"
+                            className="flex-1"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="submit"
                             disabled={uploading || !title || !summary}
-                            className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="flex-1 gap-2"
                         >
                             {uploading ? (
                                 <>
@@ -278,10 +280,10 @@ export default function CreateProjectForm({
                                     Create Project
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </form>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 }
