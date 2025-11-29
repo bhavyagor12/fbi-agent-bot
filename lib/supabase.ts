@@ -77,7 +77,7 @@ export async function linkTelegramToWallet(
 ) {
   // Normalize to lowercase for consistent lookup
   const normalizedAddress = walletAddress.toLowerCase();
-  
+
   // First check if wallet user exists
   const { data: walletUser } = await getUserByWallet(normalizedAddress);
   if (!walletUser) {
@@ -164,6 +164,11 @@ export async function getProjectById(id: number) {
       created_at,
       user_id,
       users(first_name, last_name, username),
+      project_attachments(
+        id,
+        url,
+        media_type
+      ),
       feedback(
         id, 
         content, 
@@ -202,7 +207,7 @@ export async function getActiveProjects() {
   return await supabaseServer
     .from("projects")
     .select(
-      "id, title, summary, user_id, feedback_summary, users(first_name, last_name, username)"
+      "id, title, summary, user_id, feedback_summary, users(first_name, last_name, username), project_attachments(id, url, media_type)"
     )
     .eq("status", "active");
 }
@@ -211,7 +216,7 @@ export async function getInReviewProjects() {
   return await supabaseServer
     .from("projects")
     .select(
-      "id, title, summary, user_id, feedback_summary, created_at, users(first_name, last_name, username)"
+      "id, title, summary, user_id, feedback_summary, created_at, users(first_name, last_name, username), project_attachments(id, url, media_type)"
     )
     .eq("status", "in_review")
     .order("created_at", { ascending: false });
@@ -248,7 +253,7 @@ export async function searchActiveProjects(query: string) {
   return await supabaseServer
     .from("projects")
     .select(
-      "id, title, summary, user_id, feedback_summary, users(first_name, last_name, username)"
+      "id, title, summary, user_id, feedback_summary, users(first_name, last_name, username), project_attachments(id, url, media_type)"
     )
     .eq("status", "active")
     .or(

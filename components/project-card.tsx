@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import ProjectAttachmentsCarousel from "@/components/project-attachments-carousel";
 
 interface ProjectCardProps {
   project: Project;
@@ -26,7 +27,17 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
   return (
     <Link href={`/project/${project.id}`} className="block h-full">
-      <Card className="group h-full flex flex-col transition-all hover:border-primary/50 hover:shadow-md">
+      <Card className="group h-full flex flex-col transition-all hover:border-primary/50 hover:shadow-md overflow-hidden">
+        {/* Attachments Carousel */}
+        {project.project_attachments && project.project_attachments.length > 0 && (
+          <div className="w-full">
+            <ProjectAttachmentsCarousel
+              attachments={project.project_attachments}
+              showControls={project.project_attachments.length > 1}
+            />
+          </div>
+        )}
+        
         <CardHeader>
           <CardTitle className="text-lg group-hover:text-primary transition-colors line-clamp-2">
             {project.title}

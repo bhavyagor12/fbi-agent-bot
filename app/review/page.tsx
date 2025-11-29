@@ -13,6 +13,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import ProjectAttachmentsCarousel from "@/components/project-attachments-carousel";
+
+interface ProjectAttachment {
+  id: number;
+  url: string;
+  media_type: string;
+}
 
 interface Project {
   id: number;
@@ -26,8 +33,8 @@ interface Project {
     last_name: string;
     username: string;
   };
+  project_attachments?: ProjectAttachment[];
 }
-
 export default function ReviewPage() {
   const { authenticated, user, ready } = usePrivy();
   const queryClient = useQueryClient();
@@ -190,17 +197,31 @@ export default function ReviewPage() {
               <Card key={project.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-6">
-                    <div className="flex-1">
-                      <CardTitle className="text-xl mb-2">
-                        {project.title}
-                      </CardTitle>
-                      <CardDescription className="mb-3">
-                        Submitted by{" "}
-                        {project.users.first_name || project.users.username}{" "}
-                        {project.users.last_name} •{" "}
-                        {new Date(project.created_at).toLocaleDateString()}
-                      </CardDescription>
-                      <p className="text-sm line-clamp-3">{project.summary}</p>
+                    <div className="flex-1 space-y-4">
+                      <div>
+                        <CardTitle className="text-xl mb-2">
+                          {project.title}
+                        </CardTitle>
+                        <CardDescription className="mb-3">
+                          Submitted by{" "}
+                          {project.users.first_name || project.users.username}{" "}
+                          {project.users.last_name} •{" "}
+                          {new Date(project.created_at).toLocaleDateString()}
+                        </CardDescription>
+                        <p className="text-sm line-clamp-3">
+                          {project.summary}
+                        </p>
+                      </div>
+
+                      {/* Project Attachments */}
+                      {project.project_attachments &&
+                        project.project_attachments.length > 0 && (
+                          <div className="max-w-md">
+                            <ProjectAttachmentsCarousel
+                              attachments={project.project_attachments}
+                            />
+                          </div>
+                        )}
                     </div>
 
                     {/* Action Buttons */}

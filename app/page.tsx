@@ -6,6 +6,12 @@ import ProjectCard from "@/components/project-card";
 import SearchBar from "@/components/search-bar";
 import { useQuery } from "@tanstack/react-query";
 
+export interface ProjectAttachment {
+  id: number;
+  url: string;
+  media_type: string;
+}
+
 export interface Project {
   id: number;
   title: string;
@@ -17,6 +23,7 @@ export interface Project {
     last_name: string;
     username: string;
   };
+  project_attachments?: ProjectAttachment[];
 }
 
 // Debounce hook

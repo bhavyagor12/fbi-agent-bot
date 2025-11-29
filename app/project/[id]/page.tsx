@@ -26,6 +26,7 @@ import { getScoreColor, getTierColor, UserTier } from "@/lib/colors";
 import { usePrivy } from "@privy-io/react-auth";
 import { getUserByWallet } from "@/lib/supabase";
 import GenerateSummaryButton from "@/components/generate-summary-button";
+import ProjectAttachmentsCarousel from "@/components/project-attachments-carousel";
 
 // Extended Project Interface
 interface UserInfo {
@@ -34,6 +35,12 @@ interface UserInfo {
   username: string | null;
   xp?: number | null;
   tier?: string | null;
+}
+
+interface ProjectAttachment {
+  id: number;
+  url: string;
+  media_type: string;
 }
 
 interface Feedback {
@@ -61,6 +68,7 @@ interface ProjectDetails {
   created_at: string;
   user_id: number;
   users: UserInfo;
+  project_attachments?: ProjectAttachment[];
   feedback: Feedback[];
 }
 
@@ -186,6 +194,16 @@ export default function ProjectDetailsPage() {
               )}
             </div>
           </CardHeader>
+          {/* Project Attachments */}
+          {project.project_attachments && project.project_attachments.length > 0 && (
+            <CardContent>
+              <ProjectAttachmentsCarousel
+                attachments={project.project_attachments}
+                className="max-w-2xl mx-auto"
+                imageClassName="object-contain"
+              />
+            </CardContent>
+          )}
         </Card>
 
         {/* Feedback Section */}
