@@ -1,6 +1,6 @@
 /**
  * Color utilities for score and tier display
- * 
+ *
  * - Scores: Red to Green gradient (1-10)
  * - Tiers: Valorant-inspired rank colors
  */
@@ -42,7 +42,7 @@ export function getScoreColor(score: number): {
  */
 export function getScoreHexColor(score: number): string {
   const normalized = Math.max(0, Math.min(10, score)) / 10;
-  
+
   if (normalized < 0.5) {
     // Red to Yellow (scores 1-5)
     return interpolateColor("#ef4444", "#eab308", normalized * 2);
@@ -103,7 +103,11 @@ export function getTierColor(tier: UserTier): {
 /**
  * Helper function to interpolate between two hex colors
  */
-function interpolateColor(color1: string, color2: string, factor: number): string {
+function interpolateColor(
+  color1: string,
+  color2: string,
+  factor: number
+): string {
   const c1 = hexToRgb(color1);
   const c2 = hexToRgb(color2);
 
@@ -134,5 +138,3 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
 function rgbToHex(r: number, g: number, b: number): string {
   return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
 }
-
-

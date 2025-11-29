@@ -32,13 +32,13 @@ create table public.projects (
   telegram_message_id bigint null,
   telegram_chat_id bigint null,
   user_id bigint null,
-  status text null default 'active'::text,
+  status text null default 'in_review'::text,
   feedback_summary text null,
   constraint projects_pkey primary key (id),
   constraint projects_user_id_fkey foreign KEY (user_id) references users (id),
   constraint projects_status_check check (
     (
-      status = any (array['active'::text, 'archived'::text])
+      status = any (array['in_review'::text, 'active'::text, 'archived'::text])
     )
   )
 ) TABLESPACE pg_default;

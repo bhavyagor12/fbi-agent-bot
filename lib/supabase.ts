@@ -193,8 +193,38 @@ export async function updateProjectFeedbackSummary(
 export async function getActiveProjects() {
   return await supabaseServer
     .from("projects")
-    .select("id, title, summary, user_id, feedback_summary, users(first_name, last_name, username)")
+    .select(
+      "id, title, summary, user_id, feedback_summary, users(first_name, last_name, username)"
+    )
     .eq("status", "active");
+}
+
+export async function getInReviewProjects() {
+  return await supabaseServer
+    .from("projects")
+    .select(
+      "id, title, summary, user_id, feedback_summary, created_at, users(first_name, last_name, username)"
+    )
+    .eq("status", "in_review")
+    .order("created_at", { ascending: false });
+}
+
+export async function acceptProject(id: number) {
+  return await supabaseServer
+    .from("projects")
+    .update({ status: "active" })
+    .eq("id", id)
+    .select()
+    .single();
+}
+
+export async function rejectProject(id: number) {
+  return await supabaseServer
+    .from("projects")
+    .update({ status: "archived" })
+    .eq("id", id)
+    .select()
+    .single();
 }
 
 export async function findProjectByName(name: string) {
@@ -209,7 +239,9 @@ export async function findProjectByName(name: string) {
 export async function searchActiveProjects(query: string) {
   return await supabaseServer
     .from("projects")
-    .select("id, title, summary, user_id, feedback_summary, users(first_name, last_name, username)")
+    .select(
+      "id, title, summary, user_id, feedback_summary, users(first_name, last_name, username)"
+    )
     .eq("status", "active")
     .or(
       `title.ilike.%${query}%,summary.ilike.%${query}%,users.username.ilike.%${query}%,users.first_name.ilike.%${query}%,users.last_name.ilike.%${query}%`
@@ -268,10 +300,7 @@ export async function getProjectsByUserId(userId: number) {
 }
 
 // Update project summary
-export async function updateProjectSummary(
-  projectId: number,
-  summary: string
-) {
+export async function updateProjectSummary(projectId: number, summary: string) {
   return await supabaseServer
     .from("projects")
     .update({ feedback_summary: summary })
@@ -389,7 +418,8 @@ export async function updateUserXP(userId: number, xpToAdd: number) {
   const newTier = calculateTier(newXP);
 
   console.log(
-    `Updating user ${userId}: ${user.xp || 0
+    `Updating user ${userId}: ${
+      user.xp || 0
     } + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
   );
 

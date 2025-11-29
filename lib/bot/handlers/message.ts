@@ -29,7 +29,7 @@ export async function handleMessage(ctx: Context) {
   if (!message) return;
 
   // Skip commands - they are handled by command handlers
-  if (message.text?.startsWith('/')) {
+  if (message.text?.startsWith("/")) {
     return;
   }
 
