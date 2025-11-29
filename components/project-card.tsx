@@ -20,19 +20,19 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   return (
     <Link href={`/project/${project.id}`} className="block">
       <Card className="group flex flex-col transition-all hover:border-primary/50 hover:shadow-lg overflow-hidden h-full">
-        <div className="flex flex-col flex-1 p-6">
+        <div className="flex flex-col flex-1 p-4">
           <div className="flex-1">
-            <h3 className="text-xl font-semibold group-hover:text-primary transition-colors line-clamp-2 mb-3">
+            <h3 className="text-lg font-semibold group-hover:text-primary transition-colors line-clamp-2 mb-2">
               {project.title}
             </h3>
-            <p className="text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+            <p className="text-sm text-muted-foreground line-clamp-3 leading-normal">
               {project.summary}
             </p>
           </div>
 
-          <div className="flex items-center justify-between pt-6 mt-6 border-t">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center shrink-0">
+          <div className="flex items-center justify-between pt-4 mt-4 border-t">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shrink-0">
                 <span className="text-sm font-semibold text-primary-foreground">
                   {authorInitial}
                 </span>
