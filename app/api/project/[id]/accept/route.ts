@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { acceptProject } from "@/lib/supabase";
+import { acceptProject, supabaseServer } from "@/lib/supabase";
 
 export async function POST(
   request: NextRequest,
@@ -24,6 +24,92 @@ export async function POST(
 
     if (!data) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    // Create Telegram Forum Topic when project is accepted
+    try {
+      const botToken = process.env.TELEGRAM_BOT_TOKEN;
+      const chatId = process.env.TELEGRAM_GROUP_ID;
+
+      if (botToken && chatId && data.title && data.summary) {
+        const projectLink = `${process.env.NEXT_PUBLIC_APP_URL || "https://fbi-bot.vercel.app"}/project/${data.id}`;
+        let forumTopicId: number | undefined;
+        let messageId: number | undefined;
+
+        // 1. Try to create forum topic
+        try {
+          const topicResponse = await fetch(
+            `https://api.telegram.org/bot${botToken}/createForumTopic`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chatId,
+                name: data.title,
+                icon_color: 0x6fb9f0,
+              }),
+            }
+          );
+
+          const topicData = await topicResponse.json();
+
+          if (topicData.ok) {
+            forumTopicId = topicData.result.message_thread_id;
+
+            // Send message to topic
+            const msgResponse = await fetch(
+              `https://api.telegram.org/bot${botToken}/sendMessage`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_thread_id: forumTopicId,
+                  text: `📋 *${data.title}*\n\n${data.summary}\n\n🔗 [View Project](${projectLink})\n\n_Reply to this thread with your feedback!_`,
+                  parse_mode: "Markdown",
+                }),
+              }
+            );
+            const msgData = await msgResponse.json();
+            if (msgData.ok) messageId = msgData.result.message_id;
+          } else {
+            throw new Error("Failed to create topic: " + topicData.description);
+          }
+        } catch (topicError) {
+          console.warn("Failed to create forum topic, falling back to message:", topicError);
+
+          // Fallback: Send regular message
+          const msgResponse = await fetch(
+            `https://api.telegram.org/bot${botToken}/sendMessage`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: chatId,
+                text: `🚀 *New Project: ${data.title}*\n\n${data.summary}\n\n🔗 [View Project](${projectLink})\n\n_Reply to this message to add feedback._`,
+                parse_mode: "Markdown",
+              }),
+            }
+          );
+          const msgData = await msgResponse.json();
+          if (msgData.ok) messageId = msgData.result.message_id;
+        }
+
+        // Update project with Telegram info
+        if (forumTopicId || messageId) {
+          await supabaseServer
+            .from("projects")
+            .update({
+              forum_topic_id: forumTopicId,
+              telegram_message_id: messageId,
+              telegram_chat_id: Number(chatId),
+            })
+            .eq("id", data.id);
+        }
+      }
+    } catch (telegramError) {
+      console.error("Error sending Telegram notification:", telegramError);
+      // Don't fail the request if Telegram notification fails
     }
 
     return NextResponse.json({ success: true, project: data }, { status: 200 });
