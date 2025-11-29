@@ -35,6 +35,83 @@ export async function getOrUpsertUser(user: {
   return await upsertUser(user);
 }
 
+// Get or create user by wallet address
+export async function getOrUpsertUserByWallet(
+  walletAddress: string,
+  profile?: {
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+  }
+) {
+  const { data: existingUser } = await getUserByWallet(walletAddress);
+  if (existingUser) return { data: existingUser, error: null };
+
+  return await supabaseServer
+    .from("users")
+    .insert({
+      wallet_address: walletAddress,
+      ...profile,
+    })
+    .select()
+    .single();
+}
+
+// Get user by wallet address
+export async function getUserByWallet(walletAddress: string) {
+  return await supabaseServer
+    .from("users")
+    .select("*")
+    .eq("wallet_address", walletAddress)
+    .single();
+}
+
+// Link Telegram account to wallet
+export async function linkTelegramToWallet(
+  telegramUserId: number,
+  walletAddress: string
+) {
+  // First check if wallet user exists
+  const { data: walletUser } = await getUserByWallet(walletAddress);
+  if (!walletUser) {
+    return { data: null, error: new Error("Wallet user not found") };
+  }
+
+  // Update user with telegram_user_id
+  return await supabaseServer
+    .from("users")
+    .update({ telegram_user_id: telegramUserId })
+    .eq("wallet_address", walletAddress)
+    .select()
+    .single();
+}
+
+// Update user profile
+export async function updateUserProfile(
+  userId: number,
+  profile: {
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+  }
+) {
+  return await supabaseServer
+    .from("users")
+    .update(profile)
+    .eq("id", userId)
+    .select()
+    .single();
+}
+
+// Get user profile by ID
+export async function getUserProfile(userId: number) {
+  return await supabaseServer
+    .from("users")
+    .select("*")
+    .eq("id", userId)
+    .single();
+}
+
 // --- Projects ---
 
 export async function createProject(project: {
@@ -57,6 +134,14 @@ export async function getProjectByMessageId(messageId: number) {
     .from("projects")
     .select("*")
     .eq("telegram_message_id", messageId)
+    .single();
+}
+
+export async function getProjectByForumTopicId(forumTopicId: number) {
+  return await supabaseServer
+    .from("projects")
+    .select("*")
+    .eq("forum_topic_id", forumTopicId)
     .single();
 }
 
@@ -93,10 +178,22 @@ export async function getProjectById(id: number) {
     .single();
 }
 
+export async function updateProjectFeedbackSummary(
+  id: number,
+  feedbackSummary: string
+) {
+  return await supabaseServer
+    .from("projects")
+    .update({ feedback_summary: feedbackSummary })
+    .eq("id", id)
+    .select()
+    .single();
+}
+
 export async function getActiveProjects() {
   return await supabaseServer
     .from("projects")
-    .select("id, title, summary, users(first_name, last_name, username)")
+    .select("id, title, summary, user_id, feedback_summary, users(first_name, last_name, username)")
     .eq("status", "active");
 }
 
@@ -112,11 +209,75 @@ export async function findProjectByName(name: string) {
 export async function searchActiveProjects(query: string) {
   return await supabaseServer
     .from("projects")
-    .select("id, title, summary, users(first_name, last_name, username)")
+    .select("id, title, summary, user_id, feedback_summary, users(first_name, last_name, username)")
     .eq("status", "active")
     .or(
       `title.ilike.%${query}%,summary.ilike.%${query}%,users.username.ilike.%${query}%,users.first_name.ilike.%${query}%,users.last_name.ilike.%${query}%`
     );
+}
+
+// Create project with attachments
+export async function createProjectWithAttachments(
+  project: {
+    title: string;
+    summary: string;
+    user_id: number;
+  },
+  attachmentUrls: Array<{ url: string; media_type: string }>
+) {
+  // Create project first
+  const { data: newProject, error: projectError } = await supabaseServer
+    .from("projects")
+    .insert(project)
+    .select()
+    .single();
+
+  if (projectError || !newProject) {
+    return { data: null, error: projectError };
+  }
+
+  // If there are attachments, create them
+  if (attachmentUrls.length > 0) {
+    const attachments = attachmentUrls.map((att) => ({
+      project_id: newProject.id,
+      url: att.url,
+      media_type: att.media_type,
+    }));
+
+    const { error: attachmentError } = await supabaseServer
+      .from("project_attachments")
+      .insert(attachments);
+
+    if (attachmentError) {
+      console.error("Error creating attachments:", attachmentError);
+      // Project was created but attachments failed
+      return { data: newProject, error: attachmentError };
+    }
+  }
+
+  return { data: newProject, error: null };
+}
+
+// Get projects by user ID
+export async function getProjectsByUserId(userId: number) {
+  return await supabaseServer
+    .from("projects")
+    .select("id, title, summary, created_at, feedback_summary")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+}
+
+// Update project summary
+export async function updateProjectSummary(
+  projectId: number,
+  summary: string
+) {
+  return await supabaseServer
+    .from("projects")
+    .update({ feedback_summary: summary })
+    .eq("id", projectId)
+    .select()
+    .single();
 }
 
 // --- Feedback ---
@@ -228,8 +389,7 @@ export async function updateUserXP(userId: number, xpToAdd: number) {
   const newTier = calculateTier(newXP);
 
   console.log(
-    `Updating user ${userId}: ${
-      user.xp || 0
+    `Updating user ${userId}: ${user.xp || 0
     } + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
   );
 

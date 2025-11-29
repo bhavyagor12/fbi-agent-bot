@@ -40,3 +40,21 @@ Return the result as a valid JSON object with the following structure. Do not in
 }
 </output_format>
 `;
+
+export const FEEDBACK_SUMMARY_PROMPT = (feedbackItems: Array<{ content: string; hasMedia: boolean }>) => `
+<feedback_items>
+${feedbackItems.map((item, index) => `
+Feedback ${index + 1}:
+${item.content}
+${item.hasMedia ? '[Includes media/attachments]' : ''}
+`).join('\n---\n')}
+</feedback_items>
+
+<instructions>
+Analyze all the feedback items above and create a concise 50-word summary. Focus only on the key points and common themes from the feedback. Do not include any other information.
+</instructions>
+
+<output_format>
+Return only the summary text. No JSON, no markdown, just the plain text summary (exactly 50 words).
+</output_format>
+`;

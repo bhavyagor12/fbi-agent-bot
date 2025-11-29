@@ -1,15 +1,21 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Search } from "lucide-react";
+import { Search, Plus, Settings as SettingsIcon } from "lucide-react";
+import { usePrivy } from "@privy-io/react-auth";
+import Link from "next/link";
 import ProjectCard from "@/components/project-card";
 import SearchBar from "@/components/search-bar";
+import WalletConnectButton from "@/components/wallet-connect-button";
+import CreateProjectForm from "@/components/create-project-form";
 import { useQuery } from "@tanstack/react-query";
 
 export interface Project {
   id: number;
   title: string;
   summary: string;
+  user_id?: number;
+  feedback_summary?: string | null;
   users: {
     first_name: string;
     last_name: string;
@@ -36,6 +42,8 @@ function useDebounce<T>(value: T, delay: number): T {
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const { authenticated, ready } = usePrivy();
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
   const {
@@ -47,8 +55,8 @@ export default function HomePage() {
     queryFn: async () => {
       const url = debouncedSearchQuery
         ? `/api/getAllActiveProjects/query?query=${encodeURIComponent(
-            debouncedSearchQuery
-          )}`
+          debouncedSearchQuery
+        )}`
         : "/api/getAllActiveProjects";
       const res = await fetch(url);
       if (!res.ok) {
@@ -62,13 +70,35 @@ export default function HomePage() {
       {/* Header */}
       <div className="border-b border-border/50">
         <div className="mx-auto max-w-[80%] px-4 py-12 sm:px-6 lg:px-8">
-          <div className="mb-2">
-            <h1 className="text-4xl font-bold tracking-tight text-foreground">
-              FBI Project Archives
-            </h1>
-            <p className="mt-2 text-lg text-muted-foreground">
-              Read through feedback and reviews for the projects of our users
-            </p>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight text-foreground">
+                FBI Project Archives
+              </h1>
+              <p className="mt-2 text-lg text-muted-foreground">
+                Read through feedback and reviews for the projects of our users
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {authenticated && (
+                <>
+                  <Link href="/settings">
+                    <button className="flex items-center gap-2 rounded-lg border border-border/50 bg-card/80 backdrop-blur-sm px-4 py-2 text-sm font-medium text-foreground transition-all hover:bg-card">
+                      <SettingsIcon className="h-4 w-4" />
+                      Settings
+                    </button>
+                  </Link>
+                  <button
+                    onClick={() => setShowCreateForm(true)}
+                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create Project
+                  </button>
+                </>
+              )}
+              <WalletConnectButton />
+            </div>
           </div>
         </div>
       </div>
@@ -128,6 +158,17 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Create Project Modal */}
+      {showCreateForm && (
+        <CreateProjectForm
+          onClose={() => setShowCreateForm(false)}
+          onSuccess={() => {
+            // Refetch projects
+            window.location.reload();
+          }}
+        />
+      )}
     </main>
   );
 }
