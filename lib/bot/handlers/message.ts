@@ -49,15 +49,40 @@ export async function handleMessage(ctx: Context) {
   let projectId: number | null = null;
 
   // Case 0: Check if message is in a forum topic (NEW)
-  if (message.is_topic_message && message.message_thread_id) {
-    const { data: project } = await getProjectByForumTopicId(
-      message.message_thread_id
-    );
+  // In forum topics, message_thread_id is set to the topic ID
+  // Try to access it from the message object or from the update
+  const messageThreadId = (message as any).message_thread_id ?? 
+                          (ctx.update.message as any)?.message_thread_id;
+  
+  console.log(`[DEBUG] Message ID: ${message.message_id}, Thread ID: ${messageThreadId || 'none'}, Chat ID: ${message.chat.id}, Chat Type: ${message.chat.type}`);
+  
+  if (messageThreadId) {
+    console.log(`[DEBUG] Message is in forum topic ${messageThreadId}`);
+    const { data: project, error: topicError } = await getProjectByForumTopicId(messageThreadId);
+    
+    if (topicError) {
+      console.error(`[ERROR] Failed to lookup project by forum topic:`, topicError);
+    }
+    
     if (project) {
       projectId = project.id;
       console.log(
-        `Found project ${projectId} from forum topic ${message.message_thread_id}`
+        `[INFO] Found project ${projectId} from forum topic ${messageThreadId}`
       );
+    } else {
+      console.log(`[DEBUG] No project found for forum topic ${messageThreadId}, checking reply...`);
+      // Also check if replying to project root message in forum topic
+      if (replyTo) {
+        const { data: projectFromReply } = await getProjectByMessageId(
+          replyTo.message_id
+        );
+        if (projectFromReply) {
+          projectId = projectFromReply.id;
+          console.log(
+            `[INFO] Found project ${projectId} from reply to message ${replyTo.message_id} in forum topic`
+          );
+        }
+      }
     }
   }
 
