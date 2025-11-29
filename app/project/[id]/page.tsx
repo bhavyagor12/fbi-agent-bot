@@ -114,7 +114,7 @@ export default function ProjectDetailsPage() {
       }
 
       try {
-        const { data: userData } = await getUserByWallet(user.wallet.address);
+        const { data: userData } = await getUserByWallet(user.wallet.address.toLowerCase());
         if (userData && project.user_id && userData.id === project.user_id) {
           setIsOwner(true);
         }

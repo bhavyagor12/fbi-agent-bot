@@ -16,7 +16,7 @@ export default function TopNav() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isWhitelisted, setIsWhitelisted] = useState(false);
 
-  const walletAddress = user?.wallet?.address;
+  const walletAddress = user?.wallet?.address?.toLowerCase();
 
   // Check if wallet is whitelisted
   useEffect(() => {

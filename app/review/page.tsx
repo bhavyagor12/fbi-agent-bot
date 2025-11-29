@@ -40,8 +40,8 @@ export default function ReviewPage() {
   const [isWhitelisted, setIsWhitelisted] = useState<boolean | null>(null);
   const [checkingWhitelist, setCheckingWhitelist] = useState(true);
 
-  // Get wallet address
-  const walletAddress = user?.wallet?.address;
+  // Get wallet address (normalized to lowercase)
+  const walletAddress = user?.wallet?.address?.toLowerCase();
 
   // Check if wallet is whitelisted
   useEffect(() => {

@@ -42,7 +42,7 @@ export default function SettingsForm() {
             if (!authenticated || !user?.wallet?.address) return;
 
             setLoading(true);
-            const { data: userData } = await getUserByWallet(user.wallet.address);
+            const { data: userData } = await getUserByWallet(user.wallet.address.toLowerCase());
 
             if (userData) {
                 setFormData({
@@ -81,7 +81,7 @@ export default function SettingsForm() {
         try {
             // Get or create user
             const { data: userData } = await getOrUpsertUserByWallet(
-                user.wallet.address
+                user.wallet.address.toLowerCase()
             );
 
             if (userData) {
