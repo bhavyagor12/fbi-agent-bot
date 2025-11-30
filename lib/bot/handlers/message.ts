@@ -51,26 +51,38 @@ export async function handleMessage(ctx: Context) {
   // Case 0: Check if message is in a forum topic (NEW)
   // In forum topics, message_thread_id is set to the topic ID
   // Try to access it from the message object or from the update
-  const messageThreadId = (message as any).message_thread_id ?? 
-                          (ctx.update.message as any)?.message_thread_id;
-  
-  console.log(`[DEBUG] Message ID: ${message.message_id}, Thread ID: ${messageThreadId || 'none'}, Chat ID: ${message.chat.id}, Chat Type: ${message.chat.type}`);
-  
+  const messageThreadId =
+    (message as any).message_thread_id ??
+    (ctx.update.message as any)?.message_thread_id;
+
+  console.log(
+    `[DEBUG] Message ID: ${message.message_id}, Thread ID: ${
+      messageThreadId || "none"
+    }, Chat ID: ${message.chat.id}, Chat Type: ${message.chat.type}`
+  );
+
   if (messageThreadId) {
     console.log(`[DEBUG] Message is in forum topic ${messageThreadId}`);
-    const { data: project, error: topicError } = await getProjectByForumTopicId(messageThreadId);
-    
+    const { data: project, error: topicError } = await getProjectByForumTopicId(
+      messageThreadId
+    );
+
     if (topicError) {
-      console.error(`[ERROR] Failed to lookup project by forum topic:`, topicError);
+      console.error(
+        `[ERROR] Failed to lookup project by forum topic:`,
+        topicError
+      );
     }
-    
+
     if (project) {
       projectId = project.id;
       console.log(
         `[INFO] Found project ${projectId} from forum topic ${messageThreadId}`
       );
     } else {
-      console.log(`[DEBUG] No project found for forum topic ${messageThreadId}, checking reply...`);
+      console.log(
+        `[DEBUG] No project found for forum topic ${messageThreadId}, checking reply...`
+      );
       // Also check if replying to project root message in forum topic
       if (replyTo) {
         const { data: projectFromReply } = await getProjectByMessageId(
@@ -167,100 +179,112 @@ export async function handleMessage(ctx: Context) {
       // ignore
     }
 
-    // Run AI Analysis and Semantic Similarity Check asynchronously
+    // Run AI Analysis and Semantic Similarity Check
+    // IMPORTANT: We await this to ensure it completes before the webhook response is sent
+    // In serverless environments, the execution context can be terminated after response
     if (savedFeedback && text) {
       // Fetch project context (summary)
       const { data: project } = await getProjectById(projectId);
       if (project) {
-        // Run both AI analysis and embedding generation in parallel
-        Promise.all([
-          analyzeFeedback(text, project.summary, !!mediaUrl),
-          generateEmbedding(text),
-        ])
-          .then(async ([scores, embedding]) => {
-            if (!scores) {
-              console.error("Failed to analyze feedback");
-              return;
-            }
+        try {
+          console.log(
+            `[AI] Starting feedback analysis for feedback ${savedFeedback.id}`
+          );
 
-            // Calculate originality score using semantic similarity
-            let originalityScore = 10; // Default for first feedback
+          // Run both AI analysis and embedding generation in parallel
+          const [scores, embedding] = await Promise.all([
+            analyzeFeedback(text, project.summary, !!mediaUrl),
+            generateEmbedding(text),
+          ]);
 
-            if (embedding) {
-              // Store the embedding
-              await updateFeedbackEmbedding(savedFeedback.id, embedding);
+          if (!scores) {
+            console.error("[AI] Failed to analyze feedback - scores are null");
+            return;
+          }
 
-              // Use Supabase's built-in vector similarity search
-              const { data: similarFeedback, error: similarityError } =
-                await findSimilarFeedback(projectId, embedding, 5);
+          console.log(`[AI] Received scores:`, scores);
 
-              if (similarityError) {
-                console.error(
-                  "Error finding similar feedback:",
-                  similarityError
+          // Calculate originality score using semantic similarity
+          let originalityScore = 10; // Default for first feedback
+
+          if (embedding) {
+            // Store the embedding
+            await updateFeedbackEmbedding(savedFeedback.id, embedding);
+            console.log(
+              `[AI] Stored embedding for feedback ${savedFeedback.id}`
+            );
+
+            // Use Supabase's built-in vector similarity search
+            const { data: similarFeedback, error: similarityError } =
+              await findSimilarFeedback(projectId, embedding, 5);
+
+            if (similarityError) {
+              console.error(
+                "[AI] Error finding similar feedback:",
+                similarityError
+              );
+            } else if (similarFeedback && similarFeedback.length > 0) {
+              // Filter out the current feedback (it might match itself)
+              const otherFeedback = (
+                similarFeedback as SimilarFeedback[]
+              ).filter((f) => f.id !== savedFeedback.id);
+
+              if (otherFeedback.length > 0) {
+                // Use the similarity scores directly from the search results
+                const similarities = otherFeedback.map((f) => f.similarity);
+
+                originalityScore = calculateOriginalityScore(similarities);
+                console.log(
+                  `[AI] Originality score: ${originalityScore} (based on top ${similarities.length} matches)`
                 );
-              } else if (similarFeedback && similarFeedback.length > 0) {
-                // Filter out the current feedback (it might match itself)
-                const otherFeedback = (
-                  similarFeedback as SimilarFeedback[]
-                ).filter((f) => f.id !== savedFeedback.id);
-
-                if (otherFeedback.length > 0) {
-                  // Use the similarity scores directly from the search results
-                  const similarities = otherFeedback.map((f) => f.similarity);
-
-                  originalityScore = calculateOriginalityScore(similarities);
-                  console.log(
-                    `Originality score: ${originalityScore} (based on top ${similarities.length} matches)`
-                  );
-                  console.log(
-                    `Top similarities: ${similarities
-                      .slice(0, 3)
-                      .map((s: number) => s.toFixed(3))
-                      .join(", ")}`
-                  );
-                }
+                console.log(
+                  `[AI] Top similarities: ${similarities
+                    .slice(0, 3)
+                    .map((s: number) => s.toFixed(3))
+                    .join(", ")}`
+                );
               }
-            } else {
-              console.warn(
-                "Failed to generate embedding, using default originality score"
-              );
             }
+          } else {
+            console.warn(
+              "[AI] Failed to generate embedding, using default originality score"
+            );
+          }
 
-            // Update feedback scores including originality
-            await updateFeedbackScores(savedFeedback.id, {
-              score_relevance: scores.relevance,
-              score_depth: scores.depth,
-              score_evidence: scores.evidence,
-              score_constructiveness: scores.constructiveness,
-              score_tone: scores.tone,
-              score_originality: originalityScore,
-            });
-
-            // Award XP for feedback
-            const feedbackXP = calculateFeedbackXP({
-              relevance: scores.relevance,
-              depth: scores.depth,
-              evidence: scores.evidence,
-              constructiveness: scores.constructiveness,
-              tone: scores.tone,
-              originality: originalityScore,
-            });
-
-            if (feedbackXP > 0) {
-              await updateUserXP(message.from.id, feedbackXP);
-              console.log(
-                `Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${originalityScore})`
-              );
-            } else {
-              console.log(
-                `No XP awarded to user ${message.from.id} - originality too low (${originalityScore})`
-              );
-            }
-          })
-          .catch((error) => {
-            console.error("Error in async feedback processing:", error);
+          // Update feedback scores including originality
+          await updateFeedbackScores(savedFeedback.id, {
+            score_relevance: scores.relevance,
+            score_depth: scores.depth,
+            score_evidence: scores.evidence,
+            score_constructiveness: scores.constructiveness,
+            score_tone: scores.tone,
+            score_originality: originalityScore,
           });
+          console.log(`[AI] Updated scores for feedback ${savedFeedback.id}`);
+
+          // Award XP for feedback
+          const feedbackXP = calculateFeedbackXP({
+            relevance: scores.relevance,
+            depth: scores.depth,
+            evidence: scores.evidence,
+            constructiveness: scores.constructiveness,
+            tone: scores.tone,
+            originality: originalityScore,
+          });
+
+          if (feedbackXP > 0) {
+            await updateUserXP(message.from.id, feedbackXP);
+            console.log(
+              `[AI] Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${originalityScore})`
+            );
+          } else {
+            console.log(
+              `[AI] No XP awarded to user ${message.from.id} - originality too low (${originalityScore})`
+            );
+          }
+        } catch (error) {
+          console.error("[AI] Error in feedback processing:", error);
+        }
       }
     }
   }
