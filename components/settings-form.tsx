@@ -29,6 +29,7 @@ export default function SettingsForm() {
         username: "",
         first_name: "",
         last_name: "",
+        wallet_address: "",
     });
     const [stats, setStats] = useState({
         xp: 0,
@@ -36,24 +37,38 @@ export default function SettingsForm() {
         projectCount: 0,
         feedbackCount: 0,
     });
+    const privyWalletAddress = user?.wallet?.address;
 
     // Fetch user profile on mount
     useEffect(() => {
         async function loadProfile() {
-            if (!authenticated || !user?.wallet?.address) return;
+            if (!authenticated) return;
 
             setLoading(true);
-            const { data: userData } = await getUserByWallet(user.wallet.address.toLowerCase());
+            
+            // Try to get user by Privy wallet address first
+            let userData = null;
+            if (privyWalletAddress) {
+                const result = await getUserByWallet(privyWalletAddress.toLowerCase());
+                userData = result.data;
+            }
+
+            // If no user found and we have a Privy wallet, create/get user
+            if (!userData && privyWalletAddress) {
+                const result = await getOrUpsertUserByWallet(privyWalletAddress.toLowerCase());
+                userData = result.data;
+            }
 
             if (userData) {
                 setFormData({
                     username: userData.username || "",
                     first_name: userData.first_name || "",
                     last_name: userData.last_name || "",
+                    wallet_address: userData.wallet_address || privyWalletAddress || "",
                 });
 
                 // Check if profile is complete
-                if (userData.username && userData.first_name && userData.last_name) {
+                if (userData.username && userData.first_name && userData.last_name && userData.wallet_address) {
                     setProfileComplete(true);
                 }
 
@@ -65,33 +80,68 @@ export default function SettingsForm() {
                     projectCount: userStats.projectCount,
                     feedbackCount: userStats.feedbackCount,
                 });
+            } else {
+                // No user found, initialize with Privy wallet if available
+                setFormData({
+                    username: "",
+                    first_name: "",
+                    last_name: "",
+                    wallet_address: privyWalletAddress || "",
+                });
             }
 
             setLoading(false);
         }
 
         loadProfile();
-    }, [authenticated, user]);
+    }, [authenticated, user, privyWalletAddress]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!user?.wallet?.address) return;
+        
+        // Require wallet address (either from Privy or manually entered)
+        if (!formData.wallet_address) {
+            alert("Please enter a wallet address");
+            return;
+        }
+
+        // Basic wallet address validation (should start with 0x and be 42 characters)
+        const walletAddress = formData.wallet_address.trim();
+        if (!walletAddress.startsWith("0x") || walletAddress.length !== 42) {
+            alert("Please enter a valid wallet address (should start with 0x and be 42 characters)");
+            return;
+        }
 
         setSaving(true);
 
         try {
-            // Get or create user
+            // Get or create user by wallet address
             const { data: userData } = await getOrUpsertUserByWallet(
-                user.wallet.address.toLowerCase()
+                formData.wallet_address.toLowerCase(),
+                {
+                    username: formData.username,
+                    first_name: formData.first_name,
+                    last_name: formData.last_name,
+                }
             );
 
             if (userData) {
-                // Update profile
-                await updateUserProfile(userData.id, formData);
-                setProfileComplete(true);
+                // Update profile (including wallet address in case it changed)
+                await updateUserProfile(userData.id, {
+                    username: formData.username,
+                    first_name: formData.first_name,
+                    last_name: formData.last_name,
+                    wallet_address: formData.wallet_address.toLowerCase(),
+                });
+                
+                // Check if profile is complete
+                if (formData.username && formData.first_name && formData.last_name && formData.wallet_address) {
+                    setProfileComplete(true);
+                }
             }
         } catch (error) {
             console.error("Error saving profile:", error);
+            alert("Failed to save profile. Please try again.");
         } finally {
             setSaving(false);
         }
@@ -156,17 +206,37 @@ export default function SettingsForm() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {/* Wallet Address Display */}
-                    <div className="rounded-lg bg-muted/50 p-4">
-                        <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-1">
-                            Connected Wallet
-                        </label>
-                        <div className="font-mono text-sm break-all">
-                            {user?.wallet?.address}
-                        </div>
-                    </div>
-
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {/* Wallet Address */}
+                        <div>
+                            <label
+                                htmlFor="wallet_address"
+                                className="block text-sm font-medium mb-2"
+                            >
+                                Wallet Address <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                                type="text"
+                                id="wallet_address"
+                                value={formData.wallet_address}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, wallet_address: e.target.value.trim() })
+                                }
+                                required
+                                className="font-mono text-sm"
+                                placeholder="0x..."
+                            />
+                            {privyWalletAddress && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    Connected via Privy: {privyWalletAddress.slice(0, 6)}...{privyWalletAddress.slice(-4)}
+                                </p>
+                            )}
+                            {!privyWalletAddress && (
+                                <p className="mt-1 text-xs text-muted-foreground">
+                                    No wallet connected via Privy. Please enter your wallet address manually.
+                                </p>
+                            )}
+                        </div>
                         <div>
                             <label
                                 htmlFor="username"
@@ -183,7 +253,6 @@ export default function SettingsForm() {
                                     onChange={(e) =>
                                         setFormData({ ...formData, username: e.target.value.replace(/^@/, '') })
                                     }
-                                    disabled={profileComplete}
                                     required
                                     className="pl-7"
                                     placeholder="username"
@@ -206,7 +275,6 @@ export default function SettingsForm() {
                                     onChange={(e) =>
                                         setFormData({ ...formData, first_name: e.target.value })
                                     }
-                                    disabled={profileComplete}
                                     required
                                     placeholder="John"
                                 />
@@ -226,40 +294,29 @@ export default function SettingsForm() {
                                     onChange={(e) =>
                                         setFormData({ ...formData, last_name: e.target.value })
                                     }
-                                    disabled={profileComplete}
                                     required
                                     placeholder="Doe"
                                 />
                             </div>
                         </div>
 
-                        {!profileComplete && (
-                            <Button
-                                type="submit"
-                                disabled={saving}
-                                className="w-full gap-2"
-                            >
-                                {saving ? (
-                                    <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="h-4 w-4" />
-                                        Save Profile
-                                    </>
-                                )}
-                            </Button>
-                        )}
-
-                        {profileComplete && (
-                            <div className="rounded-lg bg-primary/10 border border-primary/20 p-4 text-center">
-                                <p className="text-sm font-medium text-primary">
-                                    ✓ Profile complete! You can now create projects.
-                                </p>
-                            </div>
-                        )}
+                        <Button
+                            type="submit"
+                            disabled={saving}
+                            className="w-full gap-2"
+                        >
+                            {saving ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Saving...
+                                </>
+                            ) : (
+                                <>
+                                    <Save className="h-4 w-4" />
+                                    {profileComplete ? "Update Profile" : "Save Profile"}
+                                </>
+                            )}
+                        </Button>
                     </form>
                 </CardContent>
             </Card>

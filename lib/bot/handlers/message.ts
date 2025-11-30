@@ -39,12 +39,17 @@ export async function handleMessage(ctx: Context) {
   if (!message.from) return;
 
   // Upsert User (always good to keep user data fresh)
-  await getOrUpsertUser({
+  const { data: user, error: userError } = await getOrUpsertUser({
     telegram_user_id: message.from.id,
     username: message.from.username,
     first_name: message.from.first_name,
     last_name: message.from.last_name,
   });
+
+  if (userError || !user) {
+    console.error("Error getting/creating user:", userError);
+    return;
+  }
 
   let projectId: number | null = null;
 
@@ -161,7 +166,7 @@ export async function handleMessage(ctx: Context) {
 
   const { data: savedFeedback, error } = await createFeedback({
     project_id: projectId,
-    user_id: message.from.id,
+    user_id: user.id,
     content: text,
     message_id: message.message_id,
     parent_message_id: replyTo?.message_id,
@@ -182,110 +187,158 @@ export async function handleMessage(ctx: Context) {
     // Run AI Analysis and Semantic Similarity Check
     // IMPORTANT: We await this to ensure it completes before the webhook response is sent
     // In serverless environments, the execution context can be terminated after response
-    if (savedFeedback && text) {
-      // Fetch project context (summary)
-      const { data: project } = await getProjectById(projectId);
-      if (project) {
-        try {
-          console.log(
-            `[AI] Starting feedback analysis for feedback ${savedFeedback.id}`
+    if (!savedFeedback) {
+      console.error("[AI] No savedFeedback returned, skipping AI processing");
+      return;
+    }
+
+    if (!text || text.trim().length === 0) {
+      console.log("[AI] No text content in feedback, skipping AI processing");
+      return;
+    }
+
+    // Fetch project context (summary)
+    const { data: project, error: projectError } = await getProjectById(
+      projectId
+    );
+    if (projectError) {
+      console.error(
+        "[AI] Error fetching project for AI processing:",
+        projectError
+      );
+      return;
+    }
+
+    if (!project) {
+      console.error(
+        `[AI] Project ${projectId} not found, skipping AI processing`
+      );
+      return;
+    }
+
+    console.log(
+      `[AI] Starting AI processing for feedback ${savedFeedback.id} on project ${projectId}`
+    );
+
+    try {
+      // Run both AI analysis and embedding generation in parallel
+      // AWAIT THIS to ensure completion in serverless environments
+      const [scores, embedding] = await Promise.all([
+        analyzeFeedback(text, project.summary || "", !!mediaUrl),
+        generateEmbedding(text),
+      ]);
+
+      console.log(
+        `[AI] AI processing complete for feedback ${savedFeedback.id}`
+      );
+      console.log(`[AI] Scores:`, scores);
+      console.log(`[AI] Embedding generated:`, !!embedding);
+
+      if (!scores) {
+        console.error("[AI] Failed to analyze feedback - no scores returned");
+        return;
+      }
+
+      // Calculate originality score using semantic similarity
+      let originalityScore = 10; // Default for first feedback
+
+      if (embedding) {
+        // Store the embedding
+        const { error: embeddingError } = await updateFeedbackEmbedding(
+          savedFeedback.id,
+          embedding
+        );
+        if (embeddingError) {
+          console.error(
+            "[AI] Error updating feedback embedding:",
+            embeddingError
+          );
+        } else {
+          console.log(`[AI] Embedding stored for feedback ${savedFeedback.id}`);
+        }
+
+        // Use Supabase's built-in vector similarity search
+        const { data: similarFeedback, error: similarityError } =
+          await findSimilarFeedback(projectId, embedding, 5);
+
+        if (similarityError) {
+          console.error(
+            "[AI] Error finding similar feedback:",
+            similarityError
+          );
+        } else if (similarFeedback && similarFeedback.length > 0) {
+          // Filter out the current feedback (it might match itself)
+          const otherFeedback = (similarFeedback as SimilarFeedback[]).filter(
+            (f) => f.id !== savedFeedback.id
           );
 
-          // Run both AI analysis and embedding generation in parallel
-          const [scores, embedding] = await Promise.all([
-            analyzeFeedback(text, project.summary, !!mediaUrl),
-            generateEmbedding(text),
-          ]);
+          if (otherFeedback.length > 0) {
+            // Use the similarity scores directly from the search results
+            const similarities = otherFeedback.map((f) => f.similarity);
 
-          if (!scores) {
-            console.error("[AI] Failed to analyze feedback - scores are null");
-            return;
-          }
-
-          console.log(`[AI] Received scores:`, scores);
-
-          // Calculate originality score using semantic similarity
-          let originalityScore = 10; // Default for first feedback
-
-          if (embedding) {
-            // Store the embedding
-            await updateFeedbackEmbedding(savedFeedback.id, embedding);
+            originalityScore = calculateOriginalityScore(similarities);
             console.log(
-              `[AI] Stored embedding for feedback ${savedFeedback.id}`
+              `[AI] Originality score: ${originalityScore} (based on top ${similarities.length} matches)`
             );
-
-            // Use Supabase's built-in vector similarity search
-            const { data: similarFeedback, error: similarityError } =
-              await findSimilarFeedback(projectId, embedding, 5);
-
-            if (similarityError) {
-              console.error(
-                "[AI] Error finding similar feedback:",
-                similarityError
-              );
-            } else if (similarFeedback && similarFeedback.length > 0) {
-              // Filter out the current feedback (it might match itself)
-              const otherFeedback = (
-                similarFeedback as SimilarFeedback[]
-              ).filter((f) => f.id !== savedFeedback.id);
-
-              if (otherFeedback.length > 0) {
-                // Use the similarity scores directly from the search results
-                const similarities = otherFeedback.map((f) => f.similarity);
-
-                originalityScore = calculateOriginalityScore(similarities);
-                console.log(
-                  `[AI] Originality score: ${originalityScore} (based on top ${similarities.length} matches)`
-                );
-                console.log(
-                  `[AI] Top similarities: ${similarities
-                    .slice(0, 3)
-                    .map((s: number) => s.toFixed(3))
-                    .join(", ")}`
-                );
-              }
-            }
-          } else {
-            console.warn(
-              "[AI] Failed to generate embedding, using default originality score"
+            console.log(
+              `[AI] Top similarities: ${similarities
+                .slice(0, 3)
+                .map((s: number) => s.toFixed(3))
+                .join(", ")}`
             );
           }
-
-          // Update feedback scores including originality
-          await updateFeedbackScores(savedFeedback.id, {
-            score_relevance: scores.relevance,
-            score_depth: scores.depth,
-            score_evidence: scores.evidence,
-            score_constructiveness: scores.constructiveness,
-            score_tone: scores.tone,
-            score_originality: originalityScore,
-          });
-          console.log(`[AI] Updated scores for feedback ${savedFeedback.id}`);
-
-          // Award XP for feedback
-          const feedbackXP = calculateFeedbackXP({
-            relevance: scores.relevance,
-            depth: scores.depth,
-            evidence: scores.evidence,
-            constructiveness: scores.constructiveness,
-            tone: scores.tone,
-            originality: originalityScore,
-          });
-
-          if (feedbackXP > 0) {
-            await updateUserXP(message.from.id, feedbackXP);
-            console.log(
-              `[AI] Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${originalityScore})`
-            );
-          } else {
-            console.log(
-              `[AI] No XP awarded to user ${message.from.id} - originality too low (${originalityScore})`
-            );
-          }
-        } catch (error) {
-          console.error("[AI] Error in feedback processing:", error);
         }
+      } else {
+        console.warn(
+          "[AI] Failed to generate embedding, using default originality score"
+        );
       }
+
+      // Update feedback scores including originality
+      const { error: scoresError } = await updateFeedbackScores(
+        savedFeedback.id,
+        {
+          score_relevance: scores.relevance,
+          score_depth: scores.depth,
+          score_evidence: scores.evidence,
+          score_constructiveness: scores.constructiveness,
+          score_tone: scores.tone,
+          score_originality: originalityScore,
+        }
+      );
+
+      if (scoresError) {
+        console.error("[AI] Error updating feedback scores:", scoresError);
+      } else {
+        console.log(`[AI] Scores updated for feedback ${savedFeedback.id}`);
+      }
+
+      // Award XP for feedback
+      const feedbackXP = calculateFeedbackXP({
+        relevance: scores.relevance,
+        depth: scores.depth,
+        evidence: scores.evidence,
+        constructiveness: scores.constructiveness,
+        tone: scores.tone,
+        originality: originalityScore,
+      });
+
+      if (feedbackXP > 0) {
+        await updateUserXP(message.from.id, feedbackXP);
+        console.log(
+          `[AI] Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${originalityScore})`
+        );
+      } else {
+        console.log(
+          `[AI] No XP awarded to user ${message.from.id} - originality too low (${originalityScore})`
+        );
+      }
+    } catch (error) {
+      console.error("[AI] Error in feedback processing:", error);
+      console.error(
+        "[AI] Error stack:",
+        error instanceof Error ? error.stack : "No stack trace"
+      );
     }
   }
 }

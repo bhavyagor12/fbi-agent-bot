@@ -100,8 +100,13 @@ export async function updateUserProfile(
     username?: string;
     first_name?: string;
     last_name?: string;
+    wallet_address?: string;
   }
 ) {
+  // Normalize wallet address if provided
+  if (profile.wallet_address) {
+    profile.wallet_address = profile.wallet_address.toLowerCase();
+  }
   return await supabaseServer
     .from("users")
     .update(profile)
@@ -222,6 +227,16 @@ export async function getInReviewProjects() {
     .order("created_at", { ascending: false });
 }
 
+export async function getArchivedProjects() {
+  return await supabaseServer
+    .from("projects")
+    .select(
+      "id, title, summary, user_id, feedback_summary, created_at, users(first_name, last_name, username), project_attachments(id, url, media_type)"
+    )
+    .eq("status", "archived")
+    .order("created_at", { ascending: false });
+}
+
 export async function acceptProject(id: number) {
   return await supabaseServer
     .from("projects")
@@ -235,6 +250,15 @@ export async function rejectProject(id: number) {
   return await supabaseServer
     .from("projects")
     .update({ status: "archived" })
+    .eq("id", id)
+    .select()
+    .single();
+}
+
+export async function restoreProjectToReview(id: number) {
+  return await supabaseServer
+    .from("projects")
+    .update({ status: "in_review" })
     .eq("id", id)
     .select()
     .single();

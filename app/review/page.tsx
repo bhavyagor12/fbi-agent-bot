@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, XCircle, Loader2, ShieldAlert } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ShieldAlert, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,6 +39,7 @@ export default function ReviewPage() {
   const queryClient = useQueryClient();
   const [isWhitelisted, setIsWhitelisted] = useState<boolean | null>(null);
   const [checkingWhitelist, setCheckingWhitelist] = useState(true);
+  const [activeTab, setActiveTab] = useState<"review" | "archived">("review");
 
   // Get wallet address (normalized to lowercase)
   const walletAddress = user?.wallet?.address?.toLowerCase();
@@ -73,9 +74,9 @@ export default function ReviewPage() {
 
   // Fetch in-review projects
   const {
-    data: projects = [],
-    isLoading: loadingProjects,
-    isError,
+    data: inReviewProjects = [],
+    isLoading: loadingInReview,
+    isError: inReviewError,
   } = useQuery({
     queryKey: ["inReviewProjects"],
     queryFn: async () => {
@@ -85,8 +86,30 @@ export default function ReviewPage() {
       }
       return res.json();
     },
-    enabled: isWhitelisted === true,
+    enabled: isWhitelisted === true && activeTab === "review",
   });
+
+  // Fetch archived projects
+  const {
+    data: archivedProjects = [],
+    isLoading: loadingArchived,
+    isError: archivedError,
+  } = useQuery({
+    queryKey: ["archivedProjects"],
+    queryFn: async () => {
+      const res = await fetch("/api/getAllArchivedProjects");
+      if (!res.ok) {
+        throw new Error("Failed to fetch projects");
+      }
+      return res.json();
+    },
+    enabled: isWhitelisted === true && activeTab === "archived",
+  });
+
+  // Get current projects based on active tab
+  const projects = activeTab === "review" ? inReviewProjects : archivedProjects;
+  const loadingProjects = activeTab === "review" ? loadingInReview : loadingArchived;
+  const isError = activeTab === "review" ? inReviewError : archivedError;
 
   // Accept project mutation
   const acceptMutation = useMutation({
@@ -116,6 +139,24 @@ export default function ReviewPage() {
       return res.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inReviewProjects"] });
+      queryClient.invalidateQueries({ queryKey: ["archivedProjects"] });
+    },
+  });
+
+  // Restore project mutation
+  const restoreMutation = useMutation({
+    mutationFn: async (projectId: number) => {
+      const res = await fetch(`/api/project/${projectId}/restore`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to restore project");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["archivedProjects"] });
       queryClient.invalidateQueries({ queryKey: ["inReviewProjects"] });
     },
   });
@@ -158,12 +199,43 @@ export default function ReviewPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Review Pending Projects
+            Project Review
           </h1>
           <p className="mt-2 text-muted-foreground">
-            Accept or reject projects awaiting approval
+            {activeTab === "review"
+              ? "Accept or reject projects awaiting approval"
+              : "Restore archived projects back to review"}
           </p>
         </div>
+
+        {/* Tabs */}
+        <div className="mb-6 flex gap-2 border-b">
+          <Button
+            variant={activeTab === "review" ? "default" : "ghost"}
+            onClick={() => setActiveTab("review")}
+            className="rounded-b-none"
+          >
+            Under Review
+            {!loadingInReview && inReviewProjects.length > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {inReviewProjects.length}
+              </Badge>
+            )}
+          </Button>
+          <Button
+            variant={activeTab === "archived" ? "default" : "ghost"}
+            onClick={() => setActiveTab("archived")}
+            className="rounded-b-none"
+          >
+            Archived
+            {!loadingArchived && archivedProjects.length > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {archivedProjects.length}
+              </Badge>
+            )}
+          </Button>
+        </div>
+
         {/* Status Badge */}
         <div className="mb-6">
           <Badge variant="secondary">
@@ -174,7 +246,7 @@ export default function ReviewPage() {
             ) : (
               <>
                 {projects.length} project{projects.length !== 1 ? "s" : ""}{" "}
-                pending review
+                {activeTab === "review" ? "pending review" : "archived"}
               </>
             )}
           </Badge>
@@ -215,37 +287,57 @@ export default function ReviewPage() {
 
                     {/* Action Buttons */}
                     <div className="flex flex-col gap-3 min-w-[140px]">
-                      <Button
-                        onClick={() => acceptMutation.mutate(project.id)}
-                        disabled={
-                          acceptMutation.isPending || rejectMutation.isPending
-                        }
-                        className="bg-green-600 hover:bg-green-700 gap-2"
-                      >
-                        {acceptMutation.isPending &&
-                        acceptMutation.variables === project.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <CheckCircle className="h-4 w-4" />
-                        )}
-                        Accept
-                      </Button>
-                      <Button
-                        onClick={() => rejectMutation.mutate(project.id)}
-                        disabled={
-                          acceptMutation.isPending || rejectMutation.isPending
-                        }
-                        variant="destructive"
-                        className="gap-2"
-                      >
-                        {rejectMutation.isPending &&
-                        rejectMutation.variables === project.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <XCircle className="h-4 w-4" />
-                        )}
-                        Reject
-                      </Button>
+                      {activeTab === "review" ? (
+                        <>
+                          <Button
+                            onClick={() => acceptMutation.mutate(project.id)}
+                            disabled={
+                              acceptMutation.isPending ||
+                              rejectMutation.isPending
+                            }
+                            className="bg-green-600 hover:bg-green-700 gap-2"
+                          >
+                            {acceptMutation.isPending &&
+                            acceptMutation.variables === project.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle className="h-4 w-4" />
+                            )}
+                            Accept
+                          </Button>
+                          <Button
+                            onClick={() => rejectMutation.mutate(project.id)}
+                            disabled={
+                              acceptMutation.isPending ||
+                              rejectMutation.isPending
+                            }
+                            variant="destructive"
+                            className="gap-2"
+                          >
+                            {rejectMutation.isPending &&
+                            rejectMutation.variables === project.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <XCircle className="h-4 w-4" />
+                            )}
+                            Reject
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          onClick={() => restoreMutation.mutate(project.id)}
+                          disabled={restoreMutation.isPending}
+                          className="bg-blue-600 hover:bg-blue-700 gap-2"
+                        >
+                          {restoreMutation.isPending &&
+                          restoreMutation.variables === project.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
+                          Restore to Review
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -257,9 +349,15 @@ export default function ReviewPage() {
             <CardContent className="pt-12 pb-12 text-center">
               <CheckCircle className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
               <CardTitle className="text-lg mb-1">
-                No pending projects
+                {activeTab === "review"
+                  ? "No pending projects"
+                  : "No archived projects"}
               </CardTitle>
-              <CardDescription>All projects have been reviewed</CardDescription>
+              <CardDescription>
+                {activeTab === "review"
+                  ? "All projects have been reviewed"
+                  : "No projects have been archived"}
+              </CardDescription>
             </CardContent>
           </Card>
         )}
