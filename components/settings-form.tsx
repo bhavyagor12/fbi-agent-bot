@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
-import { Save, Loader2, Trophy, Star, MessageSquare, FolderOpen } from "lucide-react";
+import { toast } from "sonner";
+import { Save, Loader2, Trophy, Star, MessageSquare, FolderOpen, Info, CheckCircle, Clock, XCircle } from "lucide-react";
 import {
     getOrUpsertUserByWallet,
     updateUserProfile,
     getUserByWallet,
     getUserStats,
+    getProjectsByUserId,
 } from "@/lib/supabase";
 import { getTierColor, UserTier } from "@/lib/colors";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,11 @@ export default function SettingsForm() {
         tier: "bronze",
         projectCount: 0,
         feedbackCount: 0,
+    });
+    const [projectCounts, setProjectCounts] = useState({
+        active: 0,
+        inReview: 0,
+        archived: 0,
     });
     const privyWalletAddress = user?.wallet?.address;
 
@@ -80,6 +87,17 @@ export default function SettingsForm() {
                     projectCount: userStats.projectCount,
                     feedbackCount: userStats.feedbackCount,
                 });
+
+                // Fetch project counts by status
+                const { data: projects } = await getProjectsByUserId(userData.id);
+                if (projects) {
+                    const counts = {
+                        active: projects.filter((p: any) => p.status === "active").length,
+                        inReview: projects.filter((p: any) => p.status === "in_review").length,
+                        archived: projects.filter((p: any) => p.status === "archived").length,
+                    };
+                    setProjectCounts(counts);
+                }
             } else {
                 // No user found, initialize with Privy wallet if available
                 setFormData({
@@ -138,10 +156,16 @@ export default function SettingsForm() {
                 if (formData.username && formData.first_name && formData.last_name && formData.wallet_address) {
                     setProfileComplete(true);
                 }
+
+                toast.success("Profile saved successfully!", {
+                    description: "Your profile has been updated.",
+                });
             }
         } catch (error) {
             console.error("Error saving profile:", error);
-            alert("Failed to save profile. Please try again.");
+            toast.error("Failed to save profile", {
+                description: "Please try again.",
+            });
         } finally {
             setSaving(false);
         }
@@ -185,7 +209,7 @@ export default function SettingsForm() {
                     <CardContent className="pt-6">
                         <FolderOpen className="h-6 w-6 mx-auto text-blue-500 mb-2" />
                         <div className="text-2xl font-bold">{stats.projectCount}</div>
-                        <div className="text-xs text-muted-foreground uppercase tracking-wider">Projects</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wider">Total Projects</div>
                     </CardContent>
                 </Card>
                 <Card className="text-center">
@@ -196,6 +220,56 @@ export default function SettingsForm() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Project Status Counts */}
+            {stats.projectCount > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Project Status</CardTitle>
+                        <CardDescription>
+                            Track your projects by their review status
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div className="text-center p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                                <CheckCircle className="h-5 w-5 mx-auto text-green-500 mb-2" />
+                                <div className="text-2xl font-bold text-green-500">{projectCounts.active}</div>
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider">Active</div>
+                            </div>
+                            <div className="text-center p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                                <Clock className="h-5 w-5 mx-auto text-yellow-500 mb-2" />
+                                <div className="text-2xl font-bold text-yellow-500">{projectCounts.inReview}</div>
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider">Under Review</div>
+                            </div>
+                            <div className="text-center p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                                <XCircle className="h-5 w-5 mx-auto text-red-500 mb-2" />
+                                <div className="text-2xl font-bold text-red-500">{projectCounts.archived}</div>
+                                <div className="text-xs text-muted-foreground uppercase tracking-wider">Archived</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Project Review Info */}
+            {projectCounts.inReview > 0 && (
+                <Card className="border-blue-500/20 bg-blue-500/5">
+                    <CardContent className="pt-6">
+                        <div className="flex items-start gap-3">
+                            <Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-blue-500 mb-1">
+                                    Projects Under Review
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    You have {projectCounts.inReview} project{projectCounts.inReview !== 1 ? "s" : ""} currently under review. They will only appear publicly once approved by an admin. Active projects are visible to everyone.
+                                </p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Profile Form */}
             <Card>

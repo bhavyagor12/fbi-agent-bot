@@ -331,7 +331,7 @@ export async function createProjectWithAttachments(
 export async function getProjectsByUserId(userId: number) {
   return await supabaseServer
     .from("projects")
-    .select("id, title, summary, created_at, feedback_summary")
+    .select("id, title, summary, created_at, feedback_summary, status")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 }

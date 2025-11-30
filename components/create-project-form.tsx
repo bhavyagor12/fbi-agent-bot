@@ -3,7 +3,8 @@
 import { useState, useRef, DragEvent, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
-import { X, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { X, Upload, Image as ImageIcon, Loader2, Info } from "lucide-react";
 import { validateFile } from "@/lib/supabase-storage";
 import { getUserByWallet } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -196,6 +197,9 @@ export default function CreateProjectForm({
       }
 
       // Success!
+      toast.success("Project created successfully!", {
+        description: "Your project is under review and will appear once approved by an admin.",
+      });
       onSuccess?.();
       onClose();
     } catch (error) {
@@ -249,6 +253,7 @@ export default function CreateProjectForm({
               required
               maxLength={100}
               placeholder="Enter project title..."
+              disabled={!profileComplete}
             />
             <p className="mt-1 text-xs text-muted-foreground">
               {title.length}/100 characters
@@ -268,6 +273,7 @@ export default function CreateProjectForm({
               required
               rows={6}
               maxLength={1000}
+              disabled={!profileComplete}
               className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
               placeholder="Describe your project in detail..."
             />
@@ -289,11 +295,13 @@ export default function CreateProjectForm({
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`relative cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-all ${
-                dragActive
-                  ? "border-primary bg-primary/5"
-                  : "border-border/50 bg-background/20 hover:bg-background/50 hover:border-border"
+              onClick={() => profileComplete && fileInputRef.current?.click()}
+              className={`relative rounded-lg border-2 border-dashed p-8 text-center transition-all ${
+                !profileComplete
+                  ? "cursor-not-allowed opacity-50"
+                  : dragActive
+                  ? "cursor-pointer border-primary bg-primary/5"
+                  : "cursor-pointer border-border/50 bg-background/20 hover:bg-background/50 hover:border-border"
               }`}
             >
               <input
@@ -302,6 +310,7 @@ export default function CreateProjectForm({
                 multiple
                 accept="image/*"
                 onChange={handleFileInput}
+                disabled={!profileComplete}
                 className="hidden"
               />
 
@@ -349,6 +358,23 @@ export default function CreateProjectForm({
               <p className="text-sm text-muted-foreground mb-2">
                 Please complete your profile (Telegram username, first name, and last name) before creating a project.
               </p>
+            </div>
+          )}
+
+          {/* Project Review Info */}
+          {profileComplete && (
+            <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-500 mb-1">
+                    Project Review Process
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Your project will be submitted for review. It will only appear publicly once an admin approves it. You can check the status in your profile settings.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
