@@ -52,9 +52,7 @@ export async function POST(
       const chatId = process.env.TELEGRAM_GROUP_ID;
 
       if (botToken && chatId && data.title && data.summary) {
-        const projectLink = `${
-          process.env.NEXT_PUBLIC_APP_URL || "https://fbi-bot.vercel.app"
-        }/project/${data.id}`;
+        const projectLink = `https://fbibot.vercel.app/project/${data.id}`;
         let forumTopicId: number | undefined;
         let messageId: number | undefined;
 
