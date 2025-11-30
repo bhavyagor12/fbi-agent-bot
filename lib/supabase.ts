@@ -23,15 +23,86 @@ export async function getUser(telegram_user_id: number) {
     .single();
 }
 
+// Get user by username
+export async function getUserByUsername(username: string) {
+  if (!username) return { data: null, error: null };
+  return await supabaseServer
+    .from("users")
+    .select("*")
+    .eq("username", username)
+    .single();
+}
+
 export async function getOrUpsertUser(user: {
   telegram_user_id: number;
   username?: string;
   first_name?: string;
   last_name?: string;
 }) {
-  const { data: existingUser } = await getUser(user.telegram_user_id);
-  if (existingUser) return { data: existingUser, error: null };
+  // First check if user exists by telegram_user_id
+  const { data: existingUserByTelegramId } = await getUser(user.telegram_user_id);
+  if (existingUserByTelegramId) {
+    // Update user info if needed
+    const updates: any = {};
+    if (user.username && user.username !== existingUserByTelegramId.username) {
+      updates.username = user.username;
+    }
+    if (user.first_name && user.first_name !== existingUserByTelegramId.first_name) {
+      updates.first_name = user.first_name;
+    }
+    if (user.last_name && user.last_name !== existingUserByTelegramId.last_name) {
+      updates.last_name = user.last_name;
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      const { data: updatedUser } = await supabaseServer
+        .from("users")
+        .update(updates)
+        .eq("id", existingUserByTelegramId.id)
+        .select()
+        .single();
+      return { data: updatedUser || existingUserByTelegramId, error: null };
+    }
+    
+    return { data: existingUserByTelegramId, error: null };
+  }
 
+  // If no user found by telegram_user_id, check by username
+  if (user.username) {
+    const { data: existingUserByUsername } = await getUserByUsername(user.username);
+    if (existingUserByUsername) {
+      // User exists with same username
+      // If they don't have a telegram_user_id, add it
+      // If they have a different telegram_user_id, just update profile info
+      const updates: any = {
+        first_name: user.first_name || existingUserByUsername.first_name,
+        last_name: user.last_name || existingUserByUsername.last_name,
+      };
+
+      // Only update telegram_user_id if the existing user doesn't have one
+      // (due to unique constraint, we can't update if they have a different one)
+      if (!existingUserByUsername.telegram_user_id) {
+        updates.telegram_user_id = user.telegram_user_id;
+      }
+
+      const { data: updatedUser, error } = await supabaseServer
+        .from("users")
+        .update(updates)
+        .eq("id", existingUserByUsername.id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error updating user by username:", error);
+        // If update fails due to constraint, just return the existing user
+        return { data: existingUserByUsername, error: null };
+      }
+      
+      return { data: updatedUser || existingUserByUsername, error: null };
+    }
+  }
+
+  // No existing user found, create new one
   return await upsertUser(user);
 }
 

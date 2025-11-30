@@ -151,6 +151,13 @@ export async function handleMessage(ctx: Context) {
   // If still no project found, ignore
   if (!projectId) return;
 
+  // Check if feedback with this message_id already exists
+  const { data: existingFeedback, error: existingError } = await getFeedbackByMessageId(message.message_id);
+  if (existingFeedback && !existingError) {
+    console.log(`Feedback with message_id ${message.message_id} already exists, skipping duplicate`);
+    return;
+  }
+
   // Store Feedback
   let mediaUrl = null;
   let mediaType = null;
