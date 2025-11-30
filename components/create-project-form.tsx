@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, DragEvent } from "react";
+import { useState, useRef, DragEvent, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
+import { useRouter } from "next/navigation";
 import { X, Upload, Image as ImageIcon, Loader2 } from "lucide-react";
 import { validateFile } from "@/lib/supabase-storage";
+import { getUserByWallet } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,13 +26,75 @@ export default function CreateProjectForm({
   onSuccess,
 }: CreateProjectFormProps) {
   const { user } = usePrivy();
+  const router = useRouter();
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [checkingProfile, setCheckingProfile] = useState(true);
+  const [profileComplete, setProfileComplete] = useState(false);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [walletAddress, setWalletAddress] = useState<string>("");
+
+  // Check profile completeness on mount
+  useEffect(() => {
+    async function checkProfile() {
+      const privyWallet = user?.wallet?.address?.toLowerCase();
+      
+      // If no Privy wallet, user needs to set wallet address in settings first
+      if (!privyWallet) {
+        setCheckingProfile(false);
+        setProfileComplete(false);
+        setMissingFields(["Wallet address", "Telegram username", "First name", "Last name"]);
+        return;
+      }
+
+      setWalletAddress(privyWallet);
+
+      try {
+        const { data: userData, error: userError } = await getUserByWallet(privyWallet);
+
+        if (userError || !userData) {
+          // User doesn't exist yet, profile is incomplete
+          setMissingFields(["Telegram username", "First name", "Last name"]);
+          setProfileComplete(false);
+        } else {
+          // Check if user has wallet address (should always be true if found by wallet)
+          if (!userData.wallet_address) {
+            setMissingFields(["Wallet address", "Telegram username", "First name", "Last name"]);
+            setProfileComplete(false);
+            return;
+          }
+
+          const missing: string[] = [];
+          if (!userData.username) missing.push("Telegram username");
+          if (!userData.first_name) missing.push("First name");
+          if (!userData.last_name) missing.push("Last name");
+
+          if (missing.length > 0) {
+            setMissingFields(missing);
+            setProfileComplete(false);
+          } else {
+            setProfileComplete(true);
+            setWalletAddress(userData.wallet_address);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking profile:", error);
+        // On error, assume profile is incomplete
+        setMissingFields(["Telegram username", "First name", "Last name"]);
+        setProfileComplete(false);
+      } finally {
+        setCheckingProfile(false);
+      }
+    }
+
+    checkProfile();
+  }, [user]);
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
@@ -94,7 +158,12 @@ export default function CreateProjectForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user?.wallet?.address) return;
+    
+    // If profile is incomplete, redirect to settings
+    if (!walletAddress || !profileComplete) {
+      handleGoToSettings();
+      return;
+    }
 
     setUploading(true);
 
@@ -103,7 +172,7 @@ export default function CreateProjectForm({
       const formData = new FormData();
       formData.append("title", title);
       formData.append("summary", summary);
-      formData.append("wallet_address", user.wallet.address.toLowerCase());
+      formData.append("wallet_address", walletAddress.toLowerCase());
 
       files.forEach((file) => {
         formData.append("files", file);
@@ -115,8 +184,15 @@ export default function CreateProjectForm({
         body: formData,
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error("Failed to create project");
+        if (data.error === "Profile incomplete") {
+          setMissingFields(data.missingFields || []);
+          setProfileComplete(false);
+          return;
+        }
+        throw new Error(data.error || "Failed to create project");
       }
 
       // Success!
@@ -129,6 +205,24 @@ export default function CreateProjectForm({
       setUploading(false);
     }
   };
+
+  const handleGoToSettings = () => {
+    onClose();
+    router.push("/settings");
+  };
+
+  if (checkingProfile) {
+    return (
+      <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="sm:max-w-2xl">
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
@@ -249,6 +343,15 @@ export default function CreateProjectForm({
             )}
           </div>
 
+          {/* Profile Incomplete Message */}
+          {!profileComplete && (
+            <div className="rounded-lg bg-muted/50 border border-muted p-4">
+              <p className="text-sm text-muted-foreground mb-2">
+                Please complete your profile (Telegram username, first name, and last name) before creating a project.
+              </p>
+            </div>
+          )}
+
           {/* Submit Button */}
           <div className="flex gap-3 pt-4">
             <Button
@@ -260,23 +363,34 @@ export default function CreateProjectForm({
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={uploading || !title || !summary}
-              className="flex-1 gap-2"
-            >
-              {uploading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <ImageIcon className="h-4 w-4" />
-                  Create Project
-                </>
-              )}
-            </Button>
+            {!profileComplete ? (
+              <Button
+                type="button"
+                onClick={handleGoToSettings}
+                className="flex-1 gap-2"
+              >
+                <ImageIcon className="h-4 w-4" />
+                Create Profile
+              </Button>
+            ) : (
+              <Button
+                type="submit"
+                disabled={uploading || !title || !summary}
+                className="flex-1 gap-2"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="h-4 w-4" />
+                    Create Project
+                  </>
+                )}
+              </Button>
+            )}
           </div>
         </form>
       </DialogContent>

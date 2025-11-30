@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShieldCheck, Settings, Home } from "lucide-react";
+import { ShieldCheck, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WalletConnectButton from "@/components/wallet-connect-button";
 import CreateProjectForm from "@/components/create-project-form";
@@ -85,21 +85,6 @@ export default function TopNav() {
                     >
                       <ShieldCheck className="h-4 w-4" />
                       Review
-                    </Button>
-                  </Link>
-                )}
-
-                {authenticated && (
-                  <Link href="/settings">
-                    <Button
-                      variant={
-                        pathname === "/settings" ? "secondary" : "ghost"
-                      }
-                      size="sm"
-                      className="gap-2"
-                    >
-                      <Settings className="h-4 w-4" />
-                      Settings
                     </Button>
                   </Link>
                 )}

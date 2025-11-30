@@ -30,6 +30,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Validate profile completeness
+        const missingFields: string[] = [];
+        if (!user.username) missingFields.push("Telegram username");
+        if (!user.first_name) missingFields.push("First name");
+        if (!user.last_name) missingFields.push("Last name");
+
+        if (missingFields.length > 0) {
+            return NextResponse.json(
+                {
+                    error: "Profile incomplete",
+                    missingFields,
+                },
+                { status: 400 }
+            );
+        }
+
         // Upload files if any
         const files = formData.getAll("files") as File[];
         let attachmentUrls: Array<{ url: string; media_type: string }> = [];
