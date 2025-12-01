@@ -14,9 +14,24 @@ Has Media/Attachments: ${hasMedia}
 </metadata>
 
 <instructions>
+**CRITICAL FIRST STEP: Check if the feedback is actually related to the project.**
+
+Before evaluating any other criteria, determine if the feedback is relevant to the project described in the project_context. Consider:
+- Does the feedback discuss the project's features, goals, or implementation?
+- Does it address the project's purpose or domain?
+- Is it responding to the project's content or asking questions about it?
+- Or is it completely unrelated (e.g., spam, off-topic discussion, random messages)?
+
+**IF THE FEEDBACK IS NOT RELATED TO THE PROJECT:**
+- Set ALL scores (relevance, depth, evidence, constructiveness, tone) to very low values (1-2)
+- Relevance MUST be 1 if the feedback is completely unrelated
+- Other scores should also be 1-2 to reflect that the feedback is not useful for this project
+- Still provide a brief summary
+
+**IF THE FEEDBACK IS RELATED TO THE PROJECT:**
 Evaluate the feedback based on the following criteria. Assign a score from 1 to 10 for each.
 
-1.  **Relevance**: How closely does it align with the project's context and goals?
+1.  **Relevance**: How closely does it align with the project's context and goals? (This should be high if related, low if not)
 2.  **Depth**: Does it provide actionable details, specific examples, or deep insights? (vs. surface-level comments)
 3.  **Evidence**: Does it include supporting evidence like screenshots, documents, or references? (If 'Has Media/Attachments' is true, this score should generally be higher).
 4.  **Constructiveness**: Does it offer constructive suggestions or solutions? (vs. pure praise or vague criticism)

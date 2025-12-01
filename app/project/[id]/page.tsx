@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Award } from "lucide-react";
+import { MessageSquare, Award, X } from "lucide-react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import {
@@ -18,6 +18,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import * as React from "react";
@@ -88,6 +95,7 @@ export default function ProjectDetailsPage() {
   const queryClient = useQueryClient();
   const [isOwner, setIsOwner] = React.useState(false);
   const [checkingOwnership, setCheckingOwnership] = React.useState(true);
+  const [selectedFeedback, setSelectedFeedback] = React.useState<Feedback | null>(null);
 
   const {
     data: project,
@@ -259,7 +267,11 @@ export default function ProjectDetailsPage() {
                       const userName = getUserDisplayName(feedback.users);
                       const userInitial = userName.charAt(0).toUpperCase();
                       return (
-                        <TableRow key={feedback.id}>
+                        <TableRow 
+                          key={feedback.id}
+                          className="cursor-pointer hover:bg-muted/50 transition-colors"
+                          onClick={() => setSelectedFeedback(feedback)}
+                        >
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-3">
                               <div className="h-8 w-8 rounded-full bg-linear-to-br from-primary to-primary/60 flex items-center justify-center">
@@ -282,7 +294,11 @@ export default function ProjectDetailsPage() {
                           <TableCell className="text-muted-foreground">
                             <div className="space-y-2">
                               {feedback.content && (
-                                <p>&quot;{feedback.content}&quot;</p>
+                                <p className="line-clamp-3">
+                                  &quot;{feedback.content.length > 150 
+                                    ? `${feedback.content.substring(0, 150)}...` 
+                                    : feedback.content}&quot;
+                                </p>
                               )}
                               {feedback.media_url && (
                                 <div className="mt-2">
@@ -448,6 +464,186 @@ export default function ProjectDetailsPage() {
               </Table>
             </Card>
         </section>
+
+        {/* Feedback Detail Modal */}
+        <Dialog open={!!selectedFeedback} onOpenChange={(open) => !open && setSelectedFeedback(null)}>
+          <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Feedback Details</DialogTitle>
+              <DialogDescription>
+                Full feedback content and details
+              </DialogDescription>
+            </DialogHeader>
+            {selectedFeedback && (
+              <div className="space-y-4">
+                {/* User Info */}
+                <div className="flex items-center gap-3 pb-4 border-b">
+                  <div className="h-10 w-10 rounded-full bg-linear-to-br from-primary to-primary/60 flex items-center justify-center">
+                    <span className="text-sm font-bold text-primary-foreground">
+                      {getUserDisplayName(selectedFeedback.users).charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium text-foreground">
+                      {getUserDisplayName(selectedFeedback.users)}
+                    </div>
+                    {selectedFeedback.users?.username && (
+                      <div className="text-sm text-muted-foreground">
+                        @{selectedFeedback.users.username}
+                      </div>
+                    )}
+                  </div>
+                  {selectedFeedback.users?.tier && (
+                    <Badge
+                      variant="secondary"
+                      className={`${
+                        getTierColor(selectedFeedback.users.tier as UserTier).bg
+                      } ${
+                        getTierColor(selectedFeedback.users.tier as UserTier).text
+                      }`}
+                    >
+                      {getTierColor(selectedFeedback.users.tier as UserTier).label}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Feedback Content */}
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Feedback</h4>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                      {selectedFeedback.content || "No text content"}
+                    </p>
+                  </div>
+
+                  {/* Media */}
+                  {selectedFeedback.media_url && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Media</h4>
+                      {selectedFeedback.media_type?.startsWith("image") ? (
+                        <div className="relative w-full h-64">
+                          <Image
+                            src={selectedFeedback.media_url}
+                            alt="Feedback media"
+                            fill
+                            className="object-contain rounded border border-border"
+                          />
+                        </div>
+                      ) : selectedFeedback.media_type?.startsWith("video") ? (
+                        <video
+                          src={selectedFeedback.media_url}
+                          controls
+                          className="w-full max-w-md rounded border border-border"
+                        />
+                      ) : null}
+                    </div>
+                  )}
+
+                  {/* Scores */}
+                  {(selectedFeedback.score_relevance !== null ||
+                    selectedFeedback.score_depth !== null) && (
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Scores</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedFeedback.score_relevance !== null && (
+                          <Badge
+                            variant="secondary"
+                            className={`${
+                              getScoreColor(selectedFeedback.score_relevance).bg
+                            } ${
+                              getScoreColor(selectedFeedback.score_relevance).text
+                            }`}
+                          >
+                            Relevance: {selectedFeedback.score_relevance}/10
+                          </Badge>
+                        )}
+                        {selectedFeedback.score_depth !== null && (
+                          <Badge
+                            variant="secondary"
+                            className={`${
+                              getScoreColor(selectedFeedback.score_depth).bg
+                            } ${
+                              getScoreColor(selectedFeedback.score_depth).text
+                            }`}
+                          >
+                            Depth: {selectedFeedback.score_depth}/10
+                          </Badge>
+                        )}
+                        {selectedFeedback.score_evidence !== null && (
+                          <Badge
+                            variant="secondary"
+                            className={`${
+                              getScoreColor(selectedFeedback.score_evidence).bg
+                            } ${
+                              getScoreColor(selectedFeedback.score_evidence).text
+                            }`}
+                          >
+                            Evidence: {selectedFeedback.score_evidence}/10
+                          </Badge>
+                        )}
+                        {selectedFeedback.score_constructiveness !== null && (
+                          <Badge
+                            variant="secondary"
+                            className={`${
+                              getScoreColor(selectedFeedback.score_constructiveness).bg
+                            } ${
+                              getScoreColor(selectedFeedback.score_constructiveness).text
+                            }`}
+                          >
+                            Constructiveness: {selectedFeedback.score_constructiveness}/10
+                          </Badge>
+                        )}
+                        {selectedFeedback.score_tone !== null && (
+                          <Badge
+                            variant="secondary"
+                            className={`${
+                              getScoreColor(selectedFeedback.score_tone).bg
+                            } ${
+                              getScoreColor(selectedFeedback.score_tone).text
+                            }`}
+                          >
+                            Tone: {selectedFeedback.score_tone}/10
+                          </Badge>
+                        )}
+                        {selectedFeedback.score_originality !== null && (
+                          <Badge
+                            variant="secondary"
+                            className={`${
+                              getScoreColor(selectedFeedback.score_originality).bg
+                            } ${
+                              getScoreColor(selectedFeedback.score_originality).text
+                            }`}
+                          >
+                            Originality: {selectedFeedback.score_originality}/10
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* XP */}
+                  {selectedFeedback.users?.xp !== undefined &&
+                    selectedFeedback.users.xp !== null && (
+                      <div>
+                        <h4 className="text-sm font-medium mb-1">XP</h4>
+                        <span className="text-sm text-muted-foreground">
+                          {selectedFeedback.users.xp} XP
+                        </span>
+                      </div>
+                    )}
+
+                  {/* Date */}
+                  <div>
+                    <h4 className="text-sm font-medium mb-1">Date</h4>
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(selectedFeedback.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   );

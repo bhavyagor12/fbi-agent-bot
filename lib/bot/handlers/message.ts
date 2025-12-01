@@ -38,6 +38,11 @@ export async function handleMessage(ctx: Context) {
 
   if (!message.from) return;
 
+  // Skip messages from the bot itself
+  if (message.from.id === ctx.me.id) {
+    return;
+  }
+
   // Upsert User (always good to keep user data fresh)
   const { data: user, error: userError } = await getOrUpsertUser({
     telegram_user_id: message.from.id,
