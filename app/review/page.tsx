@@ -22,6 +22,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import ProjectAttachmentsCarousel from "@/components/project-attachments-carousel";
+import ReactMarkdown from "react-markdown";
 
 interface ProjectAttachment {
   id: number;
@@ -396,10 +397,8 @@ export default function ReviewPage() {
                   {/* Project Summary */}
                   <div>
                     <h3 className="text-lg font-semibold mb-3">Project Summary</h3>
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <div className="whitespace-pre-wrap text-sm text-muted-foreground">
-                        {selectedProject.summary}
-                      </div>
+                    <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-4 prose-h3:mb-2 prose-p:text-muted-foreground prose-p:mb-4 prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ul:ml-6 prose-ol:list-decimal prose-ol:ml-6 prose-li:my-1">
+                      <ReactMarkdown>{selectedProject.summary}</ReactMarkdown>
                     </div>
                   </div>
 

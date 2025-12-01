@@ -3,6 +3,7 @@
 import { MessageSquare, Award, X } from "lucide-react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 import {
   Table,
   TableBody,
@@ -196,9 +197,9 @@ export default function ProjectDetailsPage() {
                 </div>
               </div>
               {project.summary && (
-                <CardDescription className="text-base leading-relaxed pt-2">
-                  {project.summary}
-                </CardDescription>
+                <div className="text-base leading-relaxed pt-2 prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-4 prose-h3:mb-2 prose-p:text-muted-foreground prose-p:mb-4 prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ul:ml-6 prose-ol:list-decimal prose-ol:ml-6 prose-li:my-1">
+                  <ReactMarkdown>{project.summary}</ReactMarkdown>
+                </div>
               )}
             </div>
           </CardHeader>
