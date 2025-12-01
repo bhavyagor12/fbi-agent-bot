@@ -29,7 +29,10 @@ export default function CreateProjectForm({
   const { user } = usePrivy();
   const router = useRouter();
   const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
+  const [intro, setIntro] = useState("");
+  const [features, setFeatures] = useState("");
+  const [whatToTest, setWhatToTest] = useState("");
+  const [productLink, setProductLink] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -172,7 +175,10 @@ export default function CreateProjectForm({
       // Create FormData
       const formData = new FormData();
       formData.append("title", title);
-      formData.append("summary", summary);
+      formData.append("intro", intro);
+      formData.append("features", features);
+      formData.append("what_to_test", whatToTest);
+      formData.append("product_link", productLink);
       formData.append("wallet_address", walletAddress.toLowerCase());
 
       files.forEach((file) => {
@@ -260,26 +266,87 @@ export default function CreateProjectForm({
             </p>
           </div>
 
-          {/* Summary */}
+          {/* Intro */}
           <div>
-            <label htmlFor="summary" className="block text-sm font-medium mb-2">
-              Project Summary
+            <label htmlFor="intro" className="block text-sm font-medium mb-2">
+              Intro
               <span className="text-destructive ml-1">*</span>
             </label>
             <textarea
-              id="summary"
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
+              id="intro"
+              value={intro}
+              onChange={(e) => setIntro(e.target.value)}
               required
-              rows={6}
-              maxLength={1000}
+              rows={4}
+              maxLength={500}
               disabled={!profileComplete}
-              className="flex min-h-[120px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-              placeholder="Describe your project in detail..."
+              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              placeholder="Introduce your project..."
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              {summary.length}/1000 characters
+              {intro.length}/500 characters
             </p>
+          </div>
+
+          {/* Features */}
+          <div>
+            <label htmlFor="features" className="block text-sm font-medium mb-2">
+              Features
+              <span className="text-destructive ml-1">*</span>
+            </label>
+            <textarea
+              id="features"
+              value={features}
+              onChange={(e) => setFeatures(e.target.value)}
+              required
+              rows={4}
+              maxLength={1000}
+              disabled={!profileComplete}
+              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              placeholder="List the key features of your project..."
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {features.length}/1000 characters
+            </p>
+          </div>
+
+          {/* What to Test */}
+          <div>
+            <label htmlFor="what_to_test" className="block text-sm font-medium mb-2">
+              What to Test
+              <span className="text-destructive ml-1">*</span>
+            </label>
+            <textarea
+              id="what_to_test"
+              value={whatToTest}
+              onChange={(e) => setWhatToTest(e.target.value)}
+              required
+              rows={4}
+              maxLength={1000}
+              disabled={!profileComplete}
+              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              placeholder="What should testers focus on when testing your project?"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              {whatToTest.length}/1000 characters
+            </p>
+          </div>
+
+          {/* Product Link */}
+          <div>
+            <label htmlFor="product_link" className="block text-sm font-medium mb-2">
+              Product Link
+              <span className="text-muted-foreground ml-1">(optional)</span>
+            </label>
+            <Input
+              type="url"
+              id="product_link"
+              value={productLink}
+              onChange={(e) => setProductLink(e.target.value)}
+              disabled={!profileComplete}
+              placeholder="https://example.com"
+              className="w-full"
+            />
           </div>
 
           {/* File Upload */}
@@ -401,7 +468,7 @@ export default function CreateProjectForm({
             ) : (
               <Button
                 type="submit"
-                disabled={uploading || !title || !summary}
+                disabled={uploading || !title || !intro || !features || !whatToTest}
                 className="flex-1 gap-2"
               >
                 {uploading ? (

@@ -117,9 +117,65 @@ export async function getOrUpsertUserByWallet(
 ) {
   // Normalize to lowercase for consistent storage and lookup
   const normalizedAddress = walletAddress.toLowerCase();
-  const { data: existingUser } = await getUserByWallet(normalizedAddress);
-  if (existingUser) return { data: existingUser, error: null };
+  
+  // First check if user exists by wallet address
+  const { data: existingUserByWallet } = await getUserByWallet(normalizedAddress);
+  if (existingUserByWallet) {
+    // Update profile info if provided
+    if (profile && (profile.username || profile.first_name || profile.last_name)) {
+      const updates: any = {};
+      if (profile.username && profile.username !== existingUserByWallet.username) {
+        updates.username = profile.username;
+      }
+      if (profile.first_name && profile.first_name !== existingUserByWallet.first_name) {
+        updates.first_name = profile.first_name;
+      }
+      if (profile.last_name && profile.last_name !== existingUserByWallet.last_name) {
+        updates.last_name = profile.last_name;
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        const { data: updatedUser } = await supabaseServer
+          .from("users")
+          .update(updates)
+          .eq("id", existingUserByWallet.id)
+          .select()
+          .single();
+        return { data: updatedUser || existingUserByWallet, error: null };
+      }
+    }
+    return { data: existingUserByWallet, error: null };
+  }
 
+  // If no user found by wallet, check by username if provided
+  if (profile?.username) {
+    const { data: existingUserByUsername } = await getUserByUsername(profile.username);
+    if (existingUserByUsername) {
+      // User exists with same username but different/no wallet address
+      // Update that user with the wallet address and other profile info
+      const updates: any = {
+        wallet_address: normalizedAddress,
+        first_name: profile.first_name || existingUserByUsername.first_name,
+        last_name: profile.last_name || existingUserByUsername.last_name,
+      };
+
+      const { data: updatedUser, error } = await supabaseServer
+        .from("users")
+        .update(updates)
+        .eq("id", existingUserByUsername.id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error("Error updating user by username:", error);
+        // If update fails, fall through to create new user
+      } else if (updatedUser) {
+        return { data: updatedUser, error: null };
+      }
+    }
+  }
+
+  // No existing user found, create new one
   return await supabaseServer
     .from("users")
     .insert({

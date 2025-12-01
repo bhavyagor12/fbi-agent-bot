@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { usePrivy } from "@privy-io/react-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, XCircle, Loader2, ShieldAlert, RotateCcw } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ShieldAlert, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,7 +12,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import ProjectAttachmentsCarousel from "@/components/project-attachments-carousel";
 
 interface ProjectAttachment {
   id: number;
@@ -40,6 +49,7 @@ export default function ReviewPage() {
   const [isWhitelisted, setIsWhitelisted] = useState<boolean | null>(null);
   const [checkingWhitelist, setCheckingWhitelist] = useState(true);
   const [activeTab, setActiveTab] = useState<"review" | "archived">("review");
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
 
   // Get wallet address (normalized to lowercase)
   const walletAddress = user?.wallet?.address?.toLowerCase();
@@ -265,7 +275,11 @@ export default function ReviewPage() {
         ) : projects.length > 0 ? (
           <div className="space-y-4">
             {projects.map((project: Project) => (
-              <Card key={project.id}>
+              <Card 
+                key={project.id}
+                className="cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => setSelectedProject(project)}
+              >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-6">
                     <div className="flex-1 space-y-4">
@@ -286,7 +300,10 @@ export default function ReviewPage() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex flex-col gap-3 min-w-[140px]">
+                    <div 
+                      className="flex flex-col gap-3 min-w-[140px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       {activeTab === "review" ? (
                         <>
                           <Button
@@ -361,6 +378,119 @@ export default function ReviewPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Detailed Project View Dialog */}
+        <Dialog open={!!selectedProject} onOpenChange={(open) => !open && setSelectedProject(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            {selectedProject && (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="text-2xl">{selectedProject.title}</DialogTitle>
+                  <DialogDescription>
+                    Submitted by {selectedProject.users.first_name || selectedProject.users.username}{" "}
+                    {selectedProject.users.last_name} • {new Date(selectedProject.created_at).toLocaleDateString()}
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-6 mt-4">
+                  {/* Project Summary */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Project Summary</h3>
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <div className="whitespace-pre-wrap text-sm text-muted-foreground">
+                        {selectedProject.summary}
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Attachments */}
+                  {selectedProject.project_attachments && selectedProject.project_attachments.length > 0 && (
+                    <>
+                      <div>
+                        <h3 className="text-lg font-semibold mb-3">Attachments</h3>
+                        <ProjectAttachmentsCarousel attachments={selectedProject.project_attachments} />
+                      </div>
+                      <Separator />
+                    </>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 pt-4">
+                    {activeTab === "review" ? (
+                      <>
+                        <Button
+                          onClick={() => {
+                            acceptMutation.mutate(selectedProject.id);
+                            setSelectedProject(null);
+                          }}
+                          disabled={
+                            acceptMutation.isPending ||
+                            rejectMutation.isPending
+                          }
+                          className="bg-green-600 hover:bg-green-700 gap-2 flex-1"
+                        >
+                          {acceptMutation.isPending &&
+                          acceptMutation.variables === selectedProject.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <CheckCircle className="h-4 w-4" />
+                          )}
+                          Accept
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            rejectMutation.mutate(selectedProject.id);
+                            setSelectedProject(null);
+                          }}
+                          disabled={
+                            acceptMutation.isPending ||
+                            rejectMutation.isPending
+                          }
+                          variant="destructive"
+                          className="gap-2 flex-1"
+                        >
+                          {rejectMutation.isPending &&
+                          rejectMutation.variables === selectedProject.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                          Reject
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        onClick={() => {
+                          restoreMutation.mutate(selectedProject.id);
+                          setSelectedProject(null);
+                        }}
+                        disabled={restoreMutation.isPending}
+                        className="bg-blue-600 hover:bg-blue-700 gap-2 flex-1"
+                      >
+                        {restoreMutation.isPending &&
+                        restoreMutation.variables === selectedProject.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RotateCcw className="h-4 w-4" />
+                        )}
+                        Restore to Review
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => setSelectedProject(null)}
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Close
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   );

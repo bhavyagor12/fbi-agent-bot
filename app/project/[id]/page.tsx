@@ -263,10 +263,16 @@ export default function ProjectDetailsPage() {
                 </TableHeader>
                 <TableBody>
                   {project.feedback.length > 0 ? (
-                    project.feedback.map((feedback) => {
-                      const userName = getUserDisplayName(feedback.users);
-                      const userInitial = userName.charAt(0).toUpperCase();
-                      return (
+                    project.feedback
+                      .filter((feedback) => {
+                        // Filter out bot messages - check if username ends with _bot or contains 'bot'
+                        const username = feedback.users?.username?.toLowerCase() || "";
+                        return !username.endsWith("_bot") && !username.includes("_bot_");
+                      })
+                      .map((feedback) => {
+                        const userName = getUserDisplayName(feedback.users);
+                        const userInitial = userName.charAt(0).toUpperCase();
+                        return (
                         <TableRow 
                           key={feedback.id}
                           className="cursor-pointer hover:bg-muted/50 transition-colors"
@@ -454,7 +460,10 @@ export default function ProjectDetailsPage() {
                         colSpan={3}
                         className="h-24 text-center text-muted-foreground"
                       >
-                        {project.feedback.length === 0
+                        {project.feedback.filter((feedback) => {
+                          const username = feedback.users?.username?.toLowerCase() || "";
+                          return !username.endsWith("_bot") && !username.includes("_bot_");
+                        }).length === 0
                           ? "No feedback yet."
                           : "No results found."}
                       </TableCell>

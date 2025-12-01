@@ -2,21 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOrUpsertUserByWallet } from "@/lib/supabase";
 import { createProjectWithAttachments } from "@/lib/supabase";
 import { uploadFiles } from "@/lib/supabase-storage";
+import { parseProjectSummary } from "@/lib/utils";
 
 export async function POST(request: NextRequest) {
     try {
         const formData = await request.formData();
 
         const title = formData.get("title") as string;
-        const summary = formData.get("summary") as string;
+        const intro = formData.get("intro") as string;
+        const features = formData.get("features") as string;
+        const whatToTest = formData.get("what_to_test") as string;
+        const productLink = formData.get("product_link") as string | null;
         const walletAddress = formData.get("wallet_address") as string;
 
-        if (!title || !summary || !walletAddress) {
+        if (!title || !intro || !features || !whatToTest || !walletAddress) {
             return NextResponse.json(
                 { error: "Missing required fields" },
                 { status: 400 }
             );
         }
+
+        // Parse fields into markdown summary
+        const summary = parseProjectSummary(intro, features, whatToTest, productLink || undefined);
 
         // Get or create user
         const { data: user, error: userError } = await getOrUpsertUserByWallet(

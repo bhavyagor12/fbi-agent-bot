@@ -56,6 +56,31 @@ export async function POST(
         let forumTopicId: number | undefined;
         let messageId: number | undefined;
 
+        // Fetch project owner information
+        let ownerMention = "Project Owner";
+        if (data.user_id) {
+          const { data: owner } = await supabaseServer
+            .from("users")
+            .select("username, telegram_user_id, first_name, last_name")
+            .eq("id", data.user_id)
+            .single();
+
+          if (owner) {
+            if (owner.username) {
+              ownerMention = `@${owner.username}`;
+            } else if (owner.telegram_user_id) {
+              // Use user mention link if no username but has telegram_user_id
+              const fullName = [owner.first_name, owner.last_name]
+                .filter(Boolean)
+                .join(" ") || "Project Owner";
+              ownerMention = `[${fullName}](tg://user?id=${owner.telegram_user_id})`;
+            }
+          }
+        }
+
+        // Format message according to requirements
+        const messageText = `📋 *${data.title}*\n\n${data.summary}\n\nCheck project out at [${projectLink}](${projectLink})\n\nProject owner - ${ownerMention}\n\nAll msgs in these channel will be recorded as feedback`;
+
         // 1. Try to create forum topic
         try {
           const topicResponse = await fetch(
@@ -85,7 +110,7 @@ export async function POST(
                 body: JSON.stringify({
                   chat_id: chatId,
                   message_thread_id: forumTopicId,
-                  text: `📋 *${data.title}*\n\n${data.summary}\n\n🔗 [View Project](${projectLink})\n\n_Reply to this thread with your feedback!_`,
+                  text: messageText,
                   parse_mode: "Markdown",
                 }),
               }
@@ -109,7 +134,7 @@ export async function POST(
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 chat_id: chatId,
-                text: `🚀 *New Project: ${data.title}*\n\n${data.summary}\n\n🔗 [View Project](${projectLink})\n\n_Reply to this message to add feedback._`,
+                text: messageText,
                 parse_mode: "Markdown",
               }),
             }

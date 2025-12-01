@@ -156,6 +156,13 @@ export async function handleMessage(ctx: Context) {
   // If still no project found, ignore
   if (!projectId) return;
 
+  // Check if message is from project owner - skip recording their feedback
+  const { data: project } = await getProjectById(projectId);
+  if (project && project.user_id === user.id) {
+    console.log(`Message from project owner (user_id: ${user.id}), skipping feedback recording`);
+    return;
+  }
+
   // Check if feedback with this message_id already exists
   const { data: existingFeedback, error: existingError } = await getFeedbackByMessageId(message.message_id);
   if (existingFeedback && !existingError) {
@@ -189,13 +196,6 @@ export async function handleMessage(ctx: Context) {
   if (error) {
     console.error("Error saving feedback:", error);
   } else {
-    // React to confirm receipt
-    try {
-      await ctx.react("👍");
-    } catch {
-      // ignore
-    }
-
     // Run AI Analysis and Semantic Similarity Check
     // IMPORTANT: We await this to ensure it completes before the webhook response is sent
     // In serverless environments, the execution context can be terminated after response
