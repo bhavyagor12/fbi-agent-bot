@@ -38,8 +38,6 @@ Evaluate the feedback based on the following criteria. Assign a score from 1 to 
 5.  **Tone**: Is the writing clear, concise, and professional?
 
 Additionally, provide a very brief, one-sentence summary of the feedback.
-
-Note: Originality is evaluated separately using semantic similarity analysis.
 </instructions>
 
 <output_format>

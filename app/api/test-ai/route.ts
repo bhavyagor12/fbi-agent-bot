@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { analyzeFeedback } from "@/lib/ai";
-import { generateEmbedding, calculateOriginalityScore } from "@/lib/embeddings";
+import { generateEmbedding, isFeedbackOriginal } from "@/lib/embeddings";
 
 export async function GET() {
   const results: any = {
@@ -63,16 +63,17 @@ export async function GET() {
     };
   }
 
-  // Test 3: Originality Score
+  // Test 3: Originality Check
   try {
     const similarityScores = [0.95, 0.82, 0.67, 0.45, 0.32];
-    const originalityScore = calculateOriginalityScore(similarityScores);
-    results.tests.originalityCalculation = {
+    const isOriginal = isFeedbackOriginal(similarityScores);
+    results.tests.originalityCheck = {
       status: "SUCCESS",
-      score: originalityScore,
+      isOriginal: isOriginal,
+      maxSimilarity: Math.max(...similarityScores),
     };
   } catch (error: any) {
-    results.tests.originalityCalculation = {
+    results.tests.originalityCheck = {
       status: "ERROR",
       error: error.message,
     };

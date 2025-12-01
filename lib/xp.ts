@@ -58,8 +58,6 @@ export const XP_CONSTANTS = {
   PROJECT_BASE: 200, // Fixed XP for creating a project
   FEEDBACK_MIN: 200, // Minimum XP for any feedback
   FEEDBACK_MAX: 500, // Maximum XP for perfect feedback
-  ORIGINALITY_THRESHOLD: 5, // Below this, XP is penalized
-  ORIGINALITY_PENALTY: 0.5, // 50% reduction for low originality
 };
 
 /**
@@ -92,8 +90,9 @@ export function calculateProjectXP(): number {
 /**
  * Calculate XP earned for providing feedback
  *
- * @param scores - AI-evaluated scores including originality
- * @returns XP amount (200-500 points)
+ * @param scores - AI-evaluated scores
+ * @param isOriginal - Whether the feedback is original (not too similar to existing feedback)
+ * @returns XP amount (200-500 points), or 0 if not original
  */
 export function calculateFeedbackXP(scores: {
   relevance: number;
@@ -101,19 +100,17 @@ export function calculateFeedbackXP(scores: {
   evidence: number;
   constructiveness: number;
   tone: number;
-  originality: number;
-}): number {
-  const { relevance, depth, evidence, constructiveness, tone, originality } =
-    scores;
+}, isOriginal: boolean = true): number {
+  const { relevance, depth, evidence, constructiveness, tone } = scores;
 
-  // No XP if originality is 1 or lower (duplicate/unoriginal feedback)
-  if (originality <= 1) {
+  // No XP if feedback is not original (too similar to existing feedback)
+  if (!isOriginal) {
     return 0;
   }
 
   // Calculate average score (all scores are 1-10)
-  const average =
-    (relevance + depth + evidence + constructiveness + tone + originality) / 6;
+  // Originality is not included in the average - it's only used as a gate
+  const average = (relevance + depth + evidence + constructiveness + tone) / 5;
 
   // Convert to XP scale (1-10 average -> 200-500 XP)
   // Map [1, 10] to [FEEDBACK_MIN, FEEDBACK_MAX]
@@ -121,11 +118,6 @@ export function calculateFeedbackXP(scores: {
     XP_CONSTANTS.FEEDBACK_MIN +
     (average - 1) *
       ((XP_CONSTANTS.FEEDBACK_MAX - XP_CONSTANTS.FEEDBACK_MIN) / 9);
-
-  // Apply anti-farming penalty if originality is low
-  if (originality < XP_CONSTANTS.ORIGINALITY_THRESHOLD) {
-    xp = xp * XP_CONSTANTS.ORIGINALITY_PENALTY;
-  }
 
   // Ensure minimum and maximum bounds
   xp = Math.max(XP_CONSTANTS.FEEDBACK_MIN, xp);

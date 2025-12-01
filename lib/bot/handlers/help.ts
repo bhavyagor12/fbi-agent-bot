@@ -17,7 +17,7 @@ Welcome! Here's how to use the bot:
   Select a project from the list to give feedback
 • \`Reply to a project thread\`
   Simply reply to any project message in a forum topic to add your feedback
-• Your feedback is automatically analyzed for quality, relevance, and originality
+• Your feedback is automatically analyzed for quality and relevance
 • Earn XP based on the quality of your feedback!
 
 💬 *How It Works*

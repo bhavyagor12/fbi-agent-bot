@@ -15,7 +15,7 @@ import {
 } from "../../supabase";
 import { calculateFeedbackXP } from "../../xp";
 import { analyzeFeedback } from "../../ai";
-import { generateEmbedding, calculateOriginalityScore } from "../../embeddings";
+import { generateEmbedding, isFeedbackOriginal } from "../../embeddings";
 
 type SimilarFeedback = {
   id: number;
@@ -251,8 +251,8 @@ export async function handleMessage(ctx: Context) {
         return;
       }
 
-      // Calculate originality score using semantic similarity
-      let originalityScore = 10; // Default for first feedback
+      // Check if feedback is original using semantic similarity
+      let isOriginal = true; // Default to original if we can't check
 
       if (embedding) {
         // Store the embedding
@@ -288,9 +288,9 @@ export async function handleMessage(ctx: Context) {
             // Use the similarity scores directly from the search results
             const similarities = otherFeedback.map((f) => f.similarity);
 
-            originalityScore = calculateOriginalityScore(similarities);
+            isOriginal = isFeedbackOriginal(similarities);
             console.log(
-              `[AI] Originality score: ${originalityScore} (based on top ${similarities.length} matches)`
+              `[AI] Feedback is ${isOriginal ? "original" : "not original"} (based on top ${similarities.length} matches)`
             );
             console.log(
               `[AI] Top similarities: ${similarities
@@ -302,11 +302,11 @@ export async function handleMessage(ctx: Context) {
         }
       } else {
         console.warn(
-          "[AI] Failed to generate embedding, using default originality score"
+          "[AI] Failed to generate embedding, assuming feedback is original"
         );
       }
 
-      // Update feedback scores including originality
+      // Update feedback scores (without originality)
       const { error: scoresError } = await updateFeedbackScores(
         savedFeedback.id,
         {
@@ -315,7 +315,6 @@ export async function handleMessage(ctx: Context) {
           score_evidence: scores.evidence,
           score_constructiveness: scores.constructiveness,
           score_tone: scores.tone,
-          score_originality: originalityScore,
         }
       );
 
@@ -325,24 +324,26 @@ export async function handleMessage(ctx: Context) {
         console.log(`[AI] Scores updated for feedback ${savedFeedback.id}`);
       }
 
-      // Award XP for feedback
-      const feedbackXP = calculateFeedbackXP({
-        relevance: scores.relevance,
-        depth: scores.depth,
-        evidence: scores.evidence,
-        constructiveness: scores.constructiveness,
-        tone: scores.tone,
-        originality: originalityScore,
-      });
+      // Award XP for feedback (originality check is done here, not as a score)
+      const feedbackXP = calculateFeedbackXP(
+        {
+          relevance: scores.relevance,
+          depth: scores.depth,
+          evidence: scores.evidence,
+          constructiveness: scores.constructiveness,
+          tone: scores.tone,
+        },
+        isOriginal
+      );
 
       if (feedbackXP > 0) {
         await updateUserXP(message.from.id, feedbackXP);
         console.log(
-          `[AI] Awarded ${feedbackXP} XP to user ${message.from.id} for feedback (originality: ${originalityScore})`
+          `[AI] Awarded ${feedbackXP} XP to user ${message.from.id} for feedback`
         );
       } else {
         console.log(
-          `[AI] No XP awarded to user ${message.from.id} - originality too low (${originalityScore})`
+          `[AI] No XP awarded to user ${message.from.id} - feedback is not original (too similar to existing feedback)`
         );
       }
     } catch (error) {

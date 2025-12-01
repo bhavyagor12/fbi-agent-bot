@@ -500,7 +500,6 @@ export async function updateFeedbackScores(
     score_evidence: number;
     score_constructiveness: number;
     score_tone: number;
-    score_originality?: number;
   }
 ) {
   console.log(`Updating feedback ${id} with scores:`, scores);

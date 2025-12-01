@@ -401,23 +401,6 @@ export default function ProjectDetailsPage() {
                                       Tone: {feedback.score_tone}/10
                                     </Badge>
                                   )}
-                                  {feedback.score_originality !== null && (
-                                    <Badge
-                                      variant="secondary"
-                                      className={`${
-                                        getScoreColor(
-                                          feedback.score_originality
-                                        ).bg
-                                      } ${
-                                        getScoreColor(
-                                          feedback.score_originality
-                                        ).text
-                                      }`}
-                                    >
-                                      Originality: {feedback.score_originality}
-                                      /10
-                                    </Badge>
-                                  )}
                                 </div>
                               )}
                             </div>
@@ -613,18 +596,6 @@ export default function ProjectDetailsPage() {
                             }`}
                           >
                             Tone: {selectedFeedback.score_tone}/10
-                          </Badge>
-                        )}
-                        {selectedFeedback.score_originality !== null && (
-                          <Badge
-                            variant="secondary"
-                            className={`${
-                              getScoreColor(selectedFeedback.score_originality).bg
-                            } ${
-                              getScoreColor(selectedFeedback.score_originality).text
-                            }`}
-                          >
-                            Originality: {selectedFeedback.score_originality}/10
                           </Badge>
                         )}
                       </div>
