@@ -222,31 +222,46 @@ export default function CreateProjectForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Title */}
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium mb-2">
-              Project Title
-              <span className="text-destructive ml-1">*</span>
-            </label>
-            <Input
-              type="text"
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-              maxLength={100}
-              placeholder="Enter project title..."
-              disabled={!profileComplete}
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              {title.length}/100 characters
-            </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex flex-col gap-4">
+            {/* Title */}
+            <div>
+              <label htmlFor="title" className="block text-sm font-medium mb-1.5">
+                Project Title
+                <span className="text-destructive ml-1">*</span>
+              </label>
+              <Input
+                type="text"
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+                maxLength={100}
+                placeholder="Project title"
+                disabled={!profileComplete}
+              />
+            </div>
+
+            {/* Product Link */}
+            <div>
+              <label htmlFor="product_link" className="block text-sm font-medium mb-1.5">
+                Product Link <span className="text-muted-foreground ml-1">(optional)</span>
+              </label>
+              <Input
+                type="url"
+                id="product_link"
+                value={productLink}
+                onChange={(e) => setProductLink(e.target.value)}
+                disabled={!profileComplete}
+                placeholder="https://example.com"
+                className="w-full"
+              />
+            </div>
           </div>
 
           {/* Intro */}
           <div>
-            <label htmlFor="intro" className="block text-sm font-medium mb-2">
+            <label htmlFor="intro" className="block text-sm font-medium mb-1.5">
               Intro
               <span className="text-destructive ml-1">*</span>
             </label>
@@ -255,93 +270,68 @@ export default function CreateProjectForm({
               value={intro}
               onChange={(e) => setIntro(e.target.value)}
               required
-              rows={4}
+              rows={2}
               maxLength={500}
               disabled={!profileComplete}
-              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-              placeholder="Introduce your project..."
+              className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+              placeholder="Brief introduction..."
             />
-            <p className="mt-1 text-xs text-muted-foreground">
-              {intro.length}/500 characters
-            </p>
           </div>
 
-          {/* Features */}
-          <div>
-            <label htmlFor="features" className="block text-sm font-medium mb-2">
-              Features
-              <span className="text-destructive ml-1">*</span>
-            </label>
-            <textarea
-              id="features"
-              value={features}
-              onChange={(e) => setFeatures(e.target.value)}
-              required
-              rows={4}
-              maxLength={1000}
-              disabled={!profileComplete}
-              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-              placeholder="List the key features of your project..."
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              {features.length}/1000 characters
-            </p>
-          </div>
+          <div className="flex flex-col gap-4">
+            {/* Features */}
+            <div>
+              <label htmlFor="features" className="block text-sm font-medium mb-1.5">
+                Features
+                <span className="text-destructive ml-1">*</span>
+              </label>
+              <textarea
+                id="features"
+                value={features}
+                onChange={(e) => setFeatures(e.target.value)}
+                required
+                rows={4}
+                maxLength={1000}
+                disabled={!profileComplete}
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                placeholder="Key features list..."
+              />
+            </div>
 
-          {/* What to Test */}
-          <div>
-            <label htmlFor="what_to_test" className="block text-sm font-medium mb-2">
-              What to Test
-              <span className="text-destructive ml-1">*</span>
-            </label>
-            <textarea
-              id="what_to_test"
-              value={whatToTest}
-              onChange={(e) => setWhatToTest(e.target.value)}
-              required
-              rows={4}
-              maxLength={1000}
-              disabled={!profileComplete}
-              className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-              placeholder="What should testers focus on when testing your project?"
-            />
-            <p className="mt-1 text-xs text-muted-foreground">
-              {whatToTest.length}/1000 characters
-            </p>
-          </div>
-
-          {/* Product Link */}
-          <div>
-            <label htmlFor="product_link" className="block text-sm font-medium mb-2">
-              Product Link
-              <span className="text-muted-foreground ml-1">(optional)</span>
-            </label>
-            <Input
-              type="url"
-              id="product_link"
-              value={productLink}
-              onChange={(e) => setProductLink(e.target.value)}
-              disabled={!profileComplete}
-              placeholder="https://example.com"
-              className="w-full"
-            />
+            {/* What to Test */}
+            <div>
+              <label htmlFor="what_to_test" className="block text-sm font-medium mb-1.5">
+                What to Test
+                <span className="text-destructive ml-1">*</span>
+              </label>
+              <textarea
+                id="what_to_test"
+                value={whatToTest}
+                onChange={(e) => setWhatToTest(e.target.value)}
+                required
+                rows={4}
+                maxLength={1000}
+                disabled={!profileComplete}
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                placeholder="Testing instructions..."
+              />
+            </div>
           </div>
 
           {/* File Upload */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Attachments{" "}
-              <span className="text-muted-foreground">(optional)</span>
+            <label className="block text-sm font-medium mb-1.5">
+              Attachments <span className="text-muted-foreground">(optional)</span>
             </label>
 
-            {/* Drop Zone */}
+            {/* Compact Drop Zone */}
             <div
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
               onClick={() => profileComplete && fileInputRef.current?.click()}
-              className={`relative rounded-lg border-2 border-dashed p-8 text-center transition-all ${!profileComplete
+              className={`relative rounded-lg border-2 border-dashed p-4 flex items-center justify-center gap-4 transition-all ${!profileComplete
                 ? "cursor-not-allowed opacity-50"
                 : dragActive
                   ? "cursor-pointer border-primary bg-primary/5"
@@ -358,22 +348,28 @@ export default function CreateProjectForm({
                 className="hidden"
               />
 
-              <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-3" />
-              <p className="text-sm font-medium text-foreground mb-1">
-                Drop photos here or click to browse
-              </p>
-              <p className="text-xs text-muted-foreground">
-                PNG, JPG, GIF, WebP up to 10MB • Max 5 files
-              </p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-muted/50">
+                  <Upload className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-foreground">
+                    Drop items or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Images up to 10MB • Max 5 files
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Preview Grid */}
             {previews.length > 0 && (
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div className="mt-3 grid grid-cols-4 sm:grid-cols-5 gap-3">
                 {previews.map((preview, index) => (
                   <div
                     key={index}
-                    className="group relative aspect-square rounded-lg overflow-hidden border border-border/50 bg-background/50"
+                    className="group relative aspect-square rounded-md overflow-hidden border border-border/50 bg-background/50"
                   >
                     <img
                       src={preview}
@@ -386,9 +382,9 @@ export default function CreateProjectForm({
                         e.stopPropagation();
                         removeFile(index);
                       }}
-                      className="absolute top-2 right-2 rounded-full bg-destructive p-1.5 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 rounded-full bg-destructive/90 p-1 text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3 w-3" />
                     </button>
                   </div>
                 ))}
@@ -396,34 +392,15 @@ export default function CreateProjectForm({
             )}
           </div>
 
-          {/* Profile Incomplete Message */}
+          {/* Messages */}
           {!profileComplete && (
-            <div className="rounded-lg bg-muted/50 border border-muted p-4">
-              <p className="text-sm text-muted-foreground mb-2">
-                Please complete your profile (Telegram username, first name, and last name) before creating a project.
-              </p>
-            </div>
-          )}
-
-          {/* Project Info */}
-          {profileComplete && (
-            <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-green-500 mb-1">
-                    Ready to Submit
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Your project will be published immediately and visible to the community.
-                  </p>
-                </div>
-              </div>
+            <div className="rounded-lg bg-muted/50 border border-muted p-3 text-sm text-muted-foreground">
+              Please complete your profile to create a project.
             </div>
           )}
 
           {/* Submit Button */}
-          <div className="flex gap-3 pt-4">
+          <div className="pt-2 flex gap-3">
             <Button
               type="button"
               onClick={onClose}
