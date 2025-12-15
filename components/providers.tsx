@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PrivyProvider } from "@privy-io/react-auth";
 import { Toaster } from "sonner";
 import { useState } from "react";
+import { UserProvider } from "./user-provider";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
@@ -19,7 +20,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       }}
     >
       <QueryClientProvider client={queryClient}>
-        {children}
+        <UserProvider>
+          {children}
+        </UserProvider>
         <Toaster theme="dark" />
       </QueryClientProvider>
     </PrivyProvider>

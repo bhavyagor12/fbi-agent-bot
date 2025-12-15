@@ -10,6 +10,8 @@ import {
     getUserByWallet,
     getUserStats,
     getProjectsByUserId,
+    getUserByEmail,
+    getOrUpsertUserByEmail,
 } from "@/lib/supabase";
 import { getTierColor, UserTier } from "@/lib/colors";
 import { Button } from "@/components/ui/button";
@@ -22,8 +24,11 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 
+import { useUser } from "@/components/user-provider";
+
 export default function SettingsForm() {
-    const { user, authenticated } = usePrivy();
+    const { user: privyUser, authenticated } = usePrivy();
+    const { user: dbUser, refreshUser } = useUser();
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [profileComplete, setProfileComplete] = useState(false);
@@ -39,67 +44,67 @@ export default function SettingsForm() {
         projectCount: 0,
         feedbackCount: 0,
     });
-    const [projectCounts, setProjectCounts] = useState({
-        active: 0,
-        inReview: 0,
-        archived: 0,
-    });
-    const privyWalletAddress = user?.wallet?.address;
 
-    // Fetch user profile on mount
+    // Explicitly derive Privy details
+    const privyWalletAddress = privyUser?.wallet?.address;
+    const privyEmail = privyUser?.google?.email || privyUser?.email?.address;
+
+    // Load profile from context or initialize
     useEffect(() => {
         async function loadProfile() {
             if (!authenticated) return;
 
-            setLoading(true);
-            
-            // Try to get user by Privy wallet address first
-            let userData = null;
-            if (privyWalletAddress) {
-                const result = await getUserByWallet(privyWalletAddress.toLowerCase());
-                userData = result.data;
-            }
-
-            // If no user found and we have a Privy wallet, create/get user
-            if (!userData && privyWalletAddress) {
-                const result = await getOrUpsertUserByWallet(privyWalletAddress.toLowerCase());
-                userData = result.data;
-            }
-
-            if (userData) {
+            // If we have DB user from context, use it directly
+            if (dbUser) {
                 setFormData({
-                    username: userData.username || "",
-                    first_name: userData.first_name || "",
-                    last_name: userData.last_name || "",
-                    wallet_address: userData.wallet_address || privyWalletAddress || "",
+                    username: dbUser.username || "",
+                    first_name: dbUser.first_name || "",
+                    last_name: dbUser.last_name || "",
+                    wallet_address: dbUser.wallet_address || privyWalletAddress || "",
                 });
 
-                // Check if profile is complete
-                if (userData.username && userData.first_name && userData.last_name && userData.wallet_address) {
+                const hasWallet = !!dbUser.wallet_address;
+                const hasEmail = !!dbUser.email;
+                if (dbUser.username && dbUser.first_name && dbUser.last_name && (hasWallet || hasEmail)) {
                     setProfileComplete(true);
                 }
 
-                // Fetch stats
-                const userStats = await getUserStats(userData.id);
+                // Fetch stats separately as they aren't in context fully
+                const userStats = await getUserStats(dbUser.id);
                 setStats({
-                    xp: userData.xp || 0,
-                    tier: userData.tier || "bronze",
+                    xp: dbUser.xp || 0,
+                    tier: dbUser.tier || "bronze",
                     projectCount: userStats.projectCount,
                     feedbackCount: userStats.feedbackCount,
                 });
 
-                // Fetch project counts by status
-                const { data: projects } = await getProjectsByUserId(userData.id);
-                if (projects) {
-                    const counts = {
-                        active: projects.filter((p: any) => p.status === "active").length,
-                        inReview: projects.filter((p: any) => p.status === "in_review").length,
-                        archived: projects.filter((p: any) => p.status === "archived").length,
-                    };
-                    setProjectCounts(counts);
-                }
+                return;
+            }
+
+            // If authenticated but no DB user (and provider finished loading? provider doesn't expose loading state here well enough to know if "null" means "not found" vs "loading")
+            // But if dbUser is null, we can try to upsert if we really want to auto-create on this page.
+
+            setLoading(true);
+
+            let userData = null;
+
+            // Only try to upsert if we are sure we don't have a user (logic below mimics original behavior)
+            if (privyWalletAddress) {
+                const result = await getOrUpsertUserByWallet(
+                    privyWalletAddress.toLowerCase(),
+                    { email: privyEmail || undefined }
+                );
+                userData = result.data;
+            } else if (privyEmail) {
+                const result = await getOrUpsertUserByEmail(privyEmail.toLowerCase());
+                userData = result.data;
+            }
+
+            if (userData) {
+                await refreshUser(); // Update global context
+                // The useEffect will re-run with dbUser populated
             } else {
-                // No user found, initialize with Privy wallet if available
+                // No user created/found
                 setFormData({
                     username: "",
                     first_name: "",
@@ -112,36 +117,55 @@ export default function SettingsForm() {
         }
 
         loadProfile();
-    }, [authenticated, user, privyWalletAddress]);
+    }, [authenticated, dbUser, privyWalletAddress, privyEmail, refreshUser]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
-        // Require wallet address (either from Privy or manually entered)
-        if (!formData.wallet_address) {
+
+        // Require wallet address (either from Privy or manually entered) if no email
+        if (!formData.wallet_address && !privyEmail) {
             alert("Please enter a wallet address");
             return;
         }
 
-        // Basic wallet address validation (should start with 0x and be 42 characters)
-        const walletAddress = formData.wallet_address.trim();
-        if (!walletAddress.startsWith("0x") || walletAddress.length !== 42) {
-            alert("Please enter a valid wallet address (should start with 0x and be 42 characters)");
-            return;
+        // Basic wallet address validation if provided
+        if (formData.wallet_address) {
+            const walletAddress = formData.wallet_address.trim();
+            if (!walletAddress.startsWith("0x") || walletAddress.length !== 42) {
+                alert("Please enter a valid wallet address (should start with 0x and be 42 characters)");
+                return;
+            }
         }
 
         setSaving(true);
 
         try {
-            // Get or create user by wallet address
-            const { data: userData } = await getOrUpsertUserByWallet(
-                formData.wallet_address.toLowerCase(),
-                {
-                    username: formData.username,
-                    first_name: formData.first_name,
-                    last_name: formData.last_name,
-                }
-            );
+            let userData = null;
+
+            // If user has email from Privy (Google auth), use email-based upsert
+            if (privyEmail) {
+                const result = await getOrUpsertUserByEmail(
+                    privyEmail.toLowerCase(),
+                    {
+                        username: formData.username,
+                        first_name: formData.first_name,
+                        last_name: formData.last_name,
+                        wallet_address: formData.wallet_address || undefined,
+                    }
+                );
+                userData = result.data;
+            } else if (formData.wallet_address) {
+                // Otherwise use wallet-based upsert
+                const result = await getOrUpsertUserByWallet(
+                    formData.wallet_address.toLowerCase(),
+                    {
+                        username: formData.username,
+                        first_name: formData.first_name,
+                        last_name: formData.last_name,
+                    }
+                );
+                userData = result.data;
+            }
 
             if (userData) {
                 // Update profile (including wallet address in case it changed)
@@ -151,15 +175,18 @@ export default function SettingsForm() {
                     last_name: formData.last_name,
                     wallet_address: formData.wallet_address.toLowerCase(),
                 });
-                
+
                 // Check if profile is complete
-                if (formData.username && formData.first_name && formData.last_name && formData.wallet_address) {
+                const hasWallet = !!formData.wallet_address;
+                const hasEmail = !!privyEmail;
+                if (formData.username && formData.first_name && formData.last_name && (hasWallet || hasEmail)) {
                     setProfileComplete(true);
                 }
 
                 toast.success("Profile saved successfully!", {
                     description: "Your profile has been updated.",
                 });
+                await refreshUser();
             }
         } catch (error) {
             console.error("Error saving profile:", error);
@@ -220,56 +247,6 @@ export default function SettingsForm() {
                     </CardContent>
                 </Card>
             </div>
-
-            {/* Project Status Counts */}
-            {stats.projectCount > 0 && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Project Status</CardTitle>
-                        <CardDescription>
-                            Track your projects by their review status
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="text-center p-4 rounded-lg bg-green-500/10 border border-green-500/20">
-                                <CheckCircle className="h-5 w-5 mx-auto text-green-500 mb-2" />
-                                <div className="text-2xl font-bold text-green-500">{projectCounts.active}</div>
-                                <div className="text-xs text-muted-foreground uppercase tracking-wider">Active</div>
-                            </div>
-                            <div className="text-center p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                                <Clock className="h-5 w-5 mx-auto text-yellow-500 mb-2" />
-                                <div className="text-2xl font-bold text-yellow-500">{projectCounts.inReview}</div>
-                                <div className="text-xs text-muted-foreground uppercase tracking-wider">Under Review</div>
-                            </div>
-                            <div className="text-center p-4 rounded-lg bg-red-500/10 border border-red-500/20">
-                                <XCircle className="h-5 w-5 mx-auto text-red-500 mb-2" />
-                                <div className="text-2xl font-bold text-red-500">{projectCounts.archived}</div>
-                                <div className="text-xs text-muted-foreground uppercase tracking-wider">Archived</div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Project Review Info */}
-            {projectCounts.inReview > 0 && (
-                <Card className="border-blue-500/20 bg-blue-500/5">
-                    <CardContent className="pt-6">
-                        <div className="flex items-start gap-3">
-                            <Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
-                            <div className="flex-1">
-                                <p className="text-sm font-medium text-blue-500 mb-1">
-                                    Projects Under Review
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                    You have {projectCounts.inReview} project{projectCounts.inReview !== 1 ? "s" : ""} currently under review. They will only appear publicly once approved by an admin. Active projects are visible to everyone.
-                                </p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
 
             {/* Profile Form */}
             <Card>

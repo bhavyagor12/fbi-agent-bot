@@ -64,10 +64,39 @@ ${item.hasMedia ? '[Includes media/attachments]' : ''}
 </feedback_items>
 
 <instructions>
-Analyze all the feedback items above and create a concise 50-word summary. Focus only on the key points and common themes from the feedback. Do not include any other information.
+Analyze all the feedback items above and create a structured summary in Markdown format. 
+
+Categorize the feedback into the following sections:
+1. **Feature Requests** - Any suggestions for new features or improvements users want
+2. **Bugs & Issues** - Any problems, errors, or issues users have reported
+3. **Compliments** - Positive feedback, things users liked, or praise
+4. **Other Insights** - Any other important observations, questions, or general feedback
+
+For each section:
+- Only include the section if there is relevant feedback for it
+- Use bullet points to list the key points
+- Be concise but capture the essence of each piece of feedback
+- If multiple feedbacks mention the same thing, consolidate them into one point
+
+If a feedback doesn't clearly fit into any category, include it in "Other Insights".
 </instructions>
 
 <output_format>
-Return only the summary text. No JSON, no markdown, just the plain text summary (exactly 50 words).
+Return the summary as clean Markdown. Use h2 headers (##) for each section. Example format:
+
+## 🚀 Feature Requests
+- Point 1
+- Point 2
+
+## 🐛 Bugs & Issues
+- Issue description
+
+## ❤️ Compliments
+- Positive feedback
+
+## 💡 Other Insights
+- Additional observation
+
+Only include sections that have content. Do not include empty sections.
 </output_format>
 `;

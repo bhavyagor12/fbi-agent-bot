@@ -55,10 +55,10 @@ export default function HomePage() {
     queryKey: ["projects", debouncedSearchQuery],
     queryFn: async () => {
       const url = debouncedSearchQuery
-        ? `/api/getAllActiveProjects/query?query=${encodeURIComponent(
-            debouncedSearchQuery
-          )}`
-        : "/api/getAllActiveProjects";
+        ? `/api/getProjects/query?query=${encodeURIComponent(
+          debouncedSearchQuery
+        )}`
+        : "/api/getProjects";
       const res = await fetch(url);
       if (!res.ok) {
         throw new Error("Network response was not ok");

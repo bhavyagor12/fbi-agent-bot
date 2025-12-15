@@ -11,6 +11,7 @@ export async function upsertUser(user: {
   username?: string;
   first_name?: string;
   last_name?: string;
+  profile_picture_url?: string;
 }) {
   return await supabaseServer.from("users").upsert(user).select().single();
 }
@@ -33,11 +34,22 @@ export async function getUserByUsername(username: string) {
     .single();
 }
 
+// Get user by email
+export async function getUserByEmail(email: string) {
+  if (!email) return { data: null, error: null };
+  return await supabaseServer
+    .from("users")
+    .select("*")
+    .eq("email", email.toLowerCase())
+    .single();
+}
+
 export async function getOrUpsertUser(user: {
   telegram_user_id: number;
   username?: string;
   first_name?: string;
   last_name?: string;
+  profile_picture_url?: string;
 }) {
   // First check if user exists by telegram_user_id
   const { data: existingUserByTelegramId } = await getUser(user.telegram_user_id);
@@ -53,7 +65,10 @@ export async function getOrUpsertUser(user: {
     if (user.last_name && user.last_name !== existingUserByTelegramId.last_name) {
       updates.last_name = user.last_name;
     }
-    
+    if (user.profile_picture_url && user.profile_picture_url !== existingUserByTelegramId.profile_picture_url) {
+      updates.profile_picture_url = user.profile_picture_url;
+    }
+
     if (Object.keys(updates).length > 0) {
       const { data: updatedUser } = await supabaseServer
         .from("users")
@@ -63,7 +78,7 @@ export async function getOrUpsertUser(user: {
         .single();
       return { data: updatedUser || existingUserByTelegramId, error: null };
     }
-    
+
     return { data: existingUserByTelegramId, error: null };
   }
 
@@ -77,6 +92,7 @@ export async function getOrUpsertUser(user: {
       const updates: any = {
         first_name: user.first_name || existingUserByUsername.first_name,
         last_name: user.last_name || existingUserByUsername.last_name,
+        ...(user.profile_picture_url && { profile_picture_url: user.profile_picture_url }),
       };
 
       // Only update telegram_user_id if the existing user doesn't have one
@@ -91,13 +107,13 @@ export async function getOrUpsertUser(user: {
         .eq("id", existingUserByUsername.id)
         .select()
         .single();
-      
+
       if (error) {
         console.error("Error updating user by username:", error);
         // If update fails due to constraint, just return the existing user
         return { data: existingUserByUsername, error: null };
       }
-      
+
       return { data: updatedUser || existingUserByUsername, error: null };
     }
   }
@@ -113,16 +129,17 @@ export async function getOrUpsertUserByWallet(
     username?: string;
     first_name?: string;
     last_name?: string;
+    email?: string;
   }
 ) {
   // Normalize to lowercase for consistent storage and lookup
   const normalizedAddress = walletAddress.toLowerCase();
-  
+
   // First check if user exists by wallet address
   const { data: existingUserByWallet } = await getUserByWallet(normalizedAddress);
   if (existingUserByWallet) {
     // Update profile info if provided
-    if (profile && (profile.username || profile.first_name || profile.last_name)) {
+    if (profile && (profile.username || profile.first_name || profile.last_name || profile.email)) {
       const updates: any = {};
       if (profile.username && profile.username !== existingUserByWallet.username) {
         updates.username = profile.username;
@@ -133,7 +150,10 @@ export async function getOrUpsertUserByWallet(
       if (profile.last_name && profile.last_name !== existingUserByWallet.last_name) {
         updates.last_name = profile.last_name;
       }
-      
+      if (profile.email && profile.email !== existingUserByWallet.email) {
+        updates.email = profile.email;
+      }
+
       if (Object.keys(updates).length > 0) {
         const { data: updatedUser } = await supabaseServer
           .from("users")
@@ -157,6 +177,7 @@ export async function getOrUpsertUserByWallet(
         wallet_address: normalizedAddress,
         first_name: profile.first_name || existingUserByUsername.first_name,
         last_name: profile.last_name || existingUserByUsername.last_name,
+        ...(profile.email && { email: profile.email }),
       };
 
       const { data: updatedUser, error } = await supabaseServer
@@ -165,7 +186,7 @@ export async function getOrUpsertUserByWallet(
         .eq("id", existingUserByUsername.id)
         .select()
         .single();
-      
+
       if (error) {
         console.error("Error updating user by username:", error);
         // If update fails, fall through to create new user
@@ -194,6 +215,62 @@ export async function getUserByWallet(walletAddress: string) {
     .from("users")
     .select("*")
     .eq("wallet_address", normalizedAddress)
+    .single();
+}
+
+// Get or create user by email address
+export async function getOrUpsertUserByEmail(
+  email: string,
+  profile?: {
+    username?: string;
+    first_name?: string;
+    last_name?: string;
+    wallet_address?: string;
+  }
+) {
+  const normalizedEmail = email.toLowerCase();
+
+  // First check if user exists by email
+  const { data: existingUser } = await getUserByEmail(normalizedEmail);
+  if (existingUser) {
+    // Update profile info if provided
+    if (profile && (profile.username || profile.first_name || profile.last_name || profile.wallet_address)) {
+      const updates: any = {};
+      if (profile.username && profile.username !== existingUser.username) {
+        updates.username = profile.username;
+      }
+      if (profile.first_name && profile.first_name !== existingUser.first_name) {
+        updates.first_name = profile.first_name;
+      }
+      if (profile.last_name && profile.last_name !== existingUser.last_name) {
+        updates.last_name = profile.last_name;
+      }
+      if (profile.wallet_address && profile.wallet_address !== existingUser.wallet_address) {
+        updates.wallet_address = profile.wallet_address.toLowerCase();
+      }
+
+      if (Object.keys(updates).length > 0) {
+        const { data: updatedUser } = await supabaseServer
+          .from("users")
+          .update(updates)
+          .eq("id", existingUser.id)
+          .select()
+          .single();
+        return { data: updatedUser || existingUser, error: null };
+      }
+    }
+    return { data: existingUser, error: null };
+  }
+
+  // No existing user found, create new one
+  return await supabaseServer
+    .from("users")
+    .insert({
+      email: normalizedEmail,
+      ...profile,
+      ...(profile?.wallet_address && { wallet_address: profile.wallet_address.toLowerCase() }),
+    })
+    .select()
     .single();
 }
 
@@ -335,13 +412,14 @@ export async function updateProjectFeedbackSummary(
     .single();
 }
 
-export async function getActiveProjects() {
+// Renamed to GetAllProjects since we don't have statuses anymore
+export async function getAllProjects() {
   return await supabaseServer
     .from("projects")
     .select(
-      "id, title, summary, user_id, feedback_summary, users(first_name, last_name, username), project_attachments(id, url, media_type)"
+      "id, title, summary, user_id, feedback_summary, created_at, users(first_name, last_name, username), project_attachments(id, url, media_type)"
     )
-    .eq("status", "active");
+    .order("created_at", { ascending: false });
 }
 
 export async function getInReviewProjects() {
@@ -400,13 +478,12 @@ export async function findProjectByName(name: string) {
     .single();
 }
 
-export async function searchActiveProjects(query: string) {
+export async function searchProjects(query: string) {
   return await supabaseServer
     .from("projects")
     .select(
       "id, title, summary, user_id, feedback_summary, users(first_name, last_name, username), project_attachments(id, url, media_type)"
     )
-    .eq("status", "active")
     .or(
       `title.ilike.%${query}%,summary.ilike.%${query}%,users.username.ilike.%${query}%,users.first_name.ilike.%${query}%,users.last_name.ilike.%${query}%`
     );
@@ -421,10 +498,10 @@ export async function createProjectWithAttachments(
   },
   attachmentUrls: Array<{ url: string; media_type: string }>
 ) {
-  // Create project first
+  // Create project first - set status to 'active' (no more project-level approval)
   const { data: newProject, error: projectError } = await supabaseServer
     .from("projects")
-    .insert(project)
+    .insert({ ...project })
     .select()
     .single();
 
@@ -458,7 +535,7 @@ export async function createProjectWithAttachments(
 export async function getProjectsByUserId(userId: number) {
   return await supabaseServer
     .from("projects")
-    .select("id, title, summary, created_at, feedback_summary, status")
+    .select("id, title, summary, created_at, feedback_summary")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 }
@@ -481,6 +558,7 @@ export async function createFeedback(feedback: {
   content: string;
   message_id: number;
   parent_message_id?: number;
+  reply_to_content?: string | null;
   media_url?: string | null;
   media_type?: string | null;
   content_embedding?: number[];
@@ -581,8 +659,7 @@ export async function updateUserXP(userId: number, xpToAdd: number) {
   const newTier = calculateTier(newXP);
 
   console.log(
-    `Updating user ${userId}: ${
-      user.xp || 0
+    `Updating user ${userId}: ${user.xp || 0
     } + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
   );
 
@@ -626,8 +703,7 @@ export async function updateUserXPById(
   const newTier = calculateTier(newXP);
 
   console.log(
-    `Updating user ${internalUserId}: ${
-      user.xp || 0
+    `Updating user ${internalUserId}: ${user.xp || 0
     } + ${xpToAdd} = ${newXP} XP (${newTier} tier)`
   );
 
@@ -685,4 +761,66 @@ export async function isWalletWhitelisted(walletAddress: string) {
     .single();
 
   return { isWhitelisted: !!data && !error, error };
+}
+
+// --- User Approval Management ---
+
+/**
+ * Get all unapproved users (with email)
+ */
+export async function getUnapprovedUsers() {
+  return await supabaseServer
+    .from("users")
+    .select("*")
+    .eq("approved", false)
+    .not("email", "is", null)
+    .order("created_at", { ascending: false });
+}
+
+/**
+ * Get all approved users (with email)
+ */
+export async function getApprovedUsers() {
+  return await supabaseServer
+    .from("users")
+    .select("*")
+    .eq("approved", true)
+    .order("created_at", { ascending: false });
+}
+
+/**
+ * Approve a user by their ID
+ */
+export async function approveUser(userId: number) {
+  return await supabaseServer
+    .from("users")
+    .update({ approved: true })
+    .eq("id", userId)
+    .select()
+    .single();
+}
+
+/**
+ * Revoke approval from a user
+ */
+export async function revokeUserApproval(userId: number) {
+  return await supabaseServer
+    .from("users")
+    .update({ approved: false })
+    .eq("id", userId)
+    .select()
+    .single();
+}
+
+/**
+ * Check if a user is approved
+ */
+export async function isUserApproved(userId: number) {
+  const { data, error } = await supabaseServer
+    .from("users")
+    .select("approved")
+    .eq("id", userId)
+    .single();
+
+  return { isApproved: data?.approved === true, error };
 }

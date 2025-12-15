@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { searchActiveProjects } from "@/lib/supabase";
+import { searchProjects } from "@/lib/supabase";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const { data, error } = await searchActiveProjects(query);
+  const { data, error } = await searchProjects(query);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

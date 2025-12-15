@@ -1,8 +1,8 @@
 import { Context, InlineKeyboard } from 'grammy';
-import { getActiveProjects, getProjectById } from '../../supabase';
+import { getAllProjects, getProjectById } from '../../supabase';
 
 export async function handleFeedbackCommand(ctx: Context) {
-    const { data: projects, error } = await getActiveProjects();
+    const { data: projects, error } = await getAllProjects();
 
     if (error || !projects || projects.length === 0) {
         return ctx.reply('No active projects found.');

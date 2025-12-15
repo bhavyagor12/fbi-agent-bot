@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useUser } from "@/components/user-provider";
 import { usePrivy } from "@privy-io/react-auth";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, XCircle, Loader2, ShieldAlert, RotateCcw, X } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ShieldAlert, RotateCcw, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,163 +13,97 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import ProjectAttachmentsCarousel from "@/components/project-attachments-carousel";
-import ReactMarkdown from "react-markdown";
+import Image from "next/image";
 
-interface ProjectAttachment {
+interface UserToReview {
   id: number;
-  url: string;
-  media_type: string;
-}
-
-interface Project {
-  id: number;
-  title: string;
-  summary: string;
-  user_id?: number;
-  feedback_summary?: string | null;
+  email: string;
+  username: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  wallet_address: string | null;
+  profile_picture_url: string | null;
   created_at: string;
-  users: {
-    first_name: string;
-    last_name: string;
-    username: string;
-  };
-  project_attachments?: ProjectAttachment[];
+  approved: boolean;
 }
+
 export default function ReviewPage() {
-  const { authenticated, user, ready } = usePrivy();
+  const { authenticated, ready } = usePrivy();
+  const { isWhitelisted, isLoading: checkingWhitelist } = useUser();
   const queryClient = useQueryClient();
-  const [isWhitelisted, setIsWhitelisted] = useState<boolean | null>(null);
-  const [checkingWhitelist, setCheckingWhitelist] = useState(true);
-  const [activeTab, setActiveTab] = useState<"review" | "archived">("review");
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [activeTab, setActiveTab] = useState<"pending" | "approved">("pending");
 
-  // Get wallet address (normalized to lowercase)
-  const walletAddress = user?.wallet?.address?.toLowerCase();
-
-  // Check if wallet is whitelisted
-  useEffect(() => {
-    async function checkWhitelist() {
-      if (!authenticated || !walletAddress) {
-        setIsWhitelisted(false);
-        setCheckingWhitelist(false);
-        return;
-      }
-
-      try {
-        const res = await fetch(
-          `/api/checkWhitelist?wallet=${encodeURIComponent(walletAddress)}`
-        );
-        const data = await res.json();
-        setIsWhitelisted(data.isWhitelisted);
-      } catch (error) {
-        console.error("Error checking whitelist:", error);
-        setIsWhitelisted(false);
-      } finally {
-        setCheckingWhitelist(false);
-      }
-    }
-
-    if (ready) {
-      checkWhitelist();
-    }
-  }, [authenticated, walletAddress, ready]);
-
-  // Fetch in-review projects
+  // Fetch unapproved users
   const {
-    data: inReviewProjects = [],
-    isLoading: loadingInReview,
-    isError: inReviewError,
+    data: unapprovedUsers = [],
+    isLoading: loadingUnapproved,
+    isError: unapprovedError,
   } = useQuery({
-    queryKey: ["inReviewProjects"],
+    queryKey: ["unapprovedUsers"],
     queryFn: async () => {
-      const res = await fetch("/api/getAllInReviewProjects");
+      const res = await fetch("/api/getUnapprovedUsers");
       if (!res.ok) {
-        throw new Error("Failed to fetch projects");
+        throw new Error("Failed to fetch users");
       }
       return res.json();
     },
-    enabled: isWhitelisted === true && activeTab === "review",
+    enabled: isWhitelisted === true && activeTab === "pending",
   });
 
-  // Fetch archived projects
+  // Fetch approved users
   const {
-    data: archivedProjects = [],
-    isLoading: loadingArchived,
-    isError: archivedError,
+    data: approvedUsers = [],
+    isLoading: loadingApproved,
+    isError: approvedError,
   } = useQuery({
-    queryKey: ["archivedProjects"],
+    queryKey: ["approvedUsers"],
     queryFn: async () => {
-      const res = await fetch("/api/getAllArchivedProjects");
+      const res = await fetch("/api/getApprovedUsers");
       if (!res.ok) {
-        throw new Error("Failed to fetch projects");
+        throw new Error("Failed to fetch users");
       }
       return res.json();
     },
-    enabled: isWhitelisted === true && activeTab === "archived",
+    enabled: isWhitelisted === true && activeTab === "approved",
   });
 
-  // Get current projects based on active tab
-  const projects = activeTab === "review" ? inReviewProjects : archivedProjects;
-  const loadingProjects = activeTab === "review" ? loadingInReview : loadingArchived;
-  const isError = activeTab === "review" ? inReviewError : archivedError;
+  // Get current users based on active tab
+  const users = activeTab === "pending" ? unapprovedUsers : approvedUsers;
+  const loadingUsers = activeTab === "pending" ? loadingUnapproved : loadingApproved;
+  const isError = activeTab === "pending" ? unapprovedError : approvedError;
 
-  // Accept project mutation
-  const acceptMutation = useMutation({
-    mutationFn: async (projectId: number) => {
-      const res = await fetch(`/api/project/${projectId}/accept`, {
+  // Approve user mutation
+  const approveMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await fetch(`/api/user/${userId}/approve`, {
         method: "POST",
       });
       if (!res.ok) {
-        throw new Error("Failed to accept project");
+        throw new Error("Failed to approve user");
       }
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inReviewProjects"] });
+      queryClient.invalidateQueries({ queryKey: ["unapprovedUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["approvedUsers"] });
     },
   });
 
-  // Reject project mutation
-  const rejectMutation = useMutation({
-    mutationFn: async (projectId: number) => {
-      const res = await fetch(`/api/project/${projectId}/reject`, {
+  // Revoke approval mutation
+  const revokeMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      const res = await fetch(`/api/user/${userId}/revoke`, {
         method: "POST",
       });
       if (!res.ok) {
-        throw new Error("Failed to reject project");
+        throw new Error("Failed to revoke approval");
       }
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inReviewProjects"] });
-      queryClient.invalidateQueries({ queryKey: ["archivedProjects"] });
-    },
-  });
-
-  // Restore project mutation
-  const restoreMutation = useMutation({
-    mutationFn: async (projectId: number) => {
-      const res = await fetch(`/api/project/${projectId}/restore`, {
-        method: "POST",
-      });
-      if (!res.ok) {
-        throw new Error("Failed to restore project");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["archivedProjects"] });
-      queryClient.invalidateQueries({ queryKey: ["inReviewProjects"] });
+      queryClient.invalidateQueries({ queryKey: ["unapprovedUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["approvedUsers"] });
     },
   });
 
@@ -195,7 +130,7 @@ export default function ReviewPage() {
               <CardDescription>
                 {!authenticated
                   ? "Please connect your wallet to access this page."
-                  : "Your wallet address is not authorized to review projects."}
+                  : "Your wallet address is not authorized to manage user approvals."}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -204,44 +139,51 @@ export default function ReviewPage() {
     );
   }
 
+  const getUserDisplayName = (user: UserToReview) => {
+    if (user.first_name || user.last_name) {
+      return `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    }
+    return user.username || user.email.split("@")[0];
+  };
+
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-[90%] px-4 py-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Project Review
+            User Approval
           </h1>
           <p className="mt-2 text-muted-foreground">
-            {activeTab === "review"
-              ? "Accept or reject projects awaiting approval"
-              : "Restore archived projects back to review"}
+            {activeTab === "pending"
+              ? "Approve users to allow them to create projects"
+              : "Manage approved users"}
           </p>
         </div>
 
         {/* Tabs */}
         <div className="mb-6 flex gap-2 border-b">
           <Button
-            variant={activeTab === "review" ? "default" : "ghost"}
-            onClick={() => setActiveTab("review")}
+            variant={activeTab === "pending" ? "default" : "ghost"}
+            onClick={() => setActiveTab("pending")}
             className="rounded-b-none"
           >
-            Under Review
-            {!loadingInReview && inReviewProjects.length > 0 && (
+            Pending Approval
+            {!loadingUnapproved && unapprovedUsers.length > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {inReviewProjects.length}
+                {unapprovedUsers.length}
               </Badge>
             )}
           </Button>
           <Button
-            variant={activeTab === "archived" ? "default" : "ghost"}
-            onClick={() => setActiveTab("archived")}
+            variant={activeTab === "approved" ? "default" : "ghost"}
+            onClick={() => setActiveTab("approved")}
             className="rounded-b-none"
           >
-            Archived
-            {!loadingArchived && archivedProjects.length > 0 && (
+            Approved Users
+            {!loadingApproved && approvedUsers.length > 0 && (
               <Badge variant="secondary" className="ml-2">
-                {archivedProjects.length}
+                {approvedUsers.length}
               </Badge>
             )}
           </Button>
@@ -250,110 +192,105 @@ export default function ReviewPage() {
         {/* Status Badge */}
         <div className="mb-6">
           <Badge variant="secondary">
-            {loadingProjects ? (
+            {loadingUsers ? (
               "Loading..."
             ) : isError ? (
-              "Error loading projects"
+              "Error loading users"
             ) : (
               <>
-                {projects.length} project{projects.length !== 1 ? "s" : ""}{" "}
-                {activeTab === "review" ? "pending review" : "archived"}
+                {users.length} user{users.length !== 1 ? "s" : ""}{" "}
+                {activeTab === "pending" ? "pending approval" : "approved"}
               </>
             )}
           </Badge>
         </div>
 
-        {/* Projects List */}
-        {loadingProjects ? (
+        {/* Users List */}
+        {loadingUsers ? (
           <div className="space-y-4">
             {[...Array(3)].map((_, i) => (
               <div
                 key={i}
-                className="h-48 rounded-xl border bg-card/50 animate-pulse"
+                className="h-32 rounded-xl border bg-card/50 animate-pulse"
               />
             ))}
           </div>
-        ) : projects.length > 0 ? (
+        ) : users.length > 0 ? (
           <div className="space-y-4">
-            {projects.map((project: Project) => (
-              <Card
-                key={project.id}
-                className="cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => setSelectedProject(project)}
-              >
+            {users.map((userItem: UserToReview) => (
+              <Card key={userItem.id}>
                 <CardHeader>
                   <div className="flex items-start justify-between gap-6">
-                    <div className="flex-1 space-y-4">
+                    <div className="flex items-center gap-4">
+                      {/* Avatar */}
+                      {userItem.profile_picture_url ? (
+                        <Image
+                          src={userItem.profile_picture_url}
+                          alt={getUserDisplayName(userItem)}
+                          width={48}
+                          height={48}
+                          className="h-12 w-12 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded-full bg-linear-to-br from-primary to-primary/60 flex items-center justify-center">
+                          <User className="h-6 w-6 text-primary-foreground" />
+                        </div>
+                      )}
+
                       <div>
-                        <CardTitle className="text-xl mb-2">
-                          {project.title}
+                        <CardTitle className="text-lg">
+                          {getUserDisplayName(userItem)}
                         </CardTitle>
-                        <CardDescription className="mb-3">
-                          Submitted by{" "}
-                          {project.users.first_name || project.users.username}{" "}
-                          {project.users.last_name} •{" "}
-                          {new Date(project.created_at).toLocaleDateString()}
+                        <CardDescription className="flex items-center gap-2 mt-1">
+                          <Mail className="h-4 w-4" />
+                          {userItem.email}
                         </CardDescription>
-                        <p className="text-sm line-clamp-3">
-                          {project.summary}
+                        {userItem.username && (
+                          <a
+                            href={`https://t.me/${userItem.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-primary/70 hover:text-primary hover:underline"
+                          >
+                            @{userItem.username}
+                          </a>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Registered: {new Date(userItem.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div
-                      className="flex flex-col gap-3 min-w-[140px]"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {activeTab === "review" ? (
-                        <>
-                          <Button
-                            onClick={() => acceptMutation.mutate(project.id)}
-                            disabled={
-                              acceptMutation.isPending ||
-                              rejectMutation.isPending
-                            }
-                            className="bg-green-600 hover:bg-green-700 gap-2"
-                          >
-                            {acceptMutation.isPending &&
-                              acceptMutation.variables === project.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <CheckCircle className="h-4 w-4" />
-                            )}
-                            Accept
-                          </Button>
-                          <Button
-                            onClick={() => rejectMutation.mutate(project.id)}
-                            disabled={
-                              acceptMutation.isPending ||
-                              rejectMutation.isPending
-                            }
-                            variant="destructive"
-                            className="gap-2"
-                          >
-                            {rejectMutation.isPending &&
-                              rejectMutation.variables === project.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <XCircle className="h-4 w-4" />
-                            )}
-                            Reject
-                          </Button>
-                        </>
-                      ) : (
+                    <div className="flex flex-col gap-3 min-w-[140px]">
+                      {activeTab === "pending" ? (
                         <Button
-                          onClick={() => restoreMutation.mutate(project.id)}
-                          disabled={restoreMutation.isPending}
-                          className="bg-blue-600 hover:bg-blue-700 gap-2"
+                          onClick={() => approveMutation.mutate(userItem.id)}
+                          disabled={approveMutation.isPending}
+                          className="bg-green-600 hover:bg-green-700 gap-2"
                         >
-                          {restoreMutation.isPending &&
-                            restoreMutation.variables === project.id ? (
+                          {approveMutation.isPending &&
+                            approveMutation.variables === userItem.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
-                            <RotateCcw className="h-4 w-4" />
+                            <CheckCircle className="h-4 w-4" />
                           )}
-                          Restore to Review
+                          Approve
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => revokeMutation.mutate(userItem.id)}
+                          disabled={revokeMutation.isPending}
+                          variant="destructive"
+                          className="gap-2"
+                        >
+                          {revokeMutation.isPending &&
+                            revokeMutation.variables === userItem.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                          Revoke Access
                         </Button>
                       )}
                     </div>
@@ -367,164 +304,18 @@ export default function ReviewPage() {
             <CardContent className="pt-12 pb-12 text-center">
               <CheckCircle className="mx-auto h-12 w-12 text-muted-foreground/50 mb-3" />
               <CardTitle className="text-lg mb-1">
-                {activeTab === "review"
-                  ? "No pending projects"
-                  : "No archived projects"}
+                {activeTab === "pending"
+                  ? "No pending users"
+                  : "No approved users"}
               </CardTitle>
               <CardDescription>
-                {activeTab === "review"
-                  ? "All projects have been reviewed"
-                  : "No projects have been archived"}
+                {activeTab === "pending"
+                  ? "All users have been reviewed"
+                  : "No users have been approved yet"}
               </CardDescription>
             </CardContent>
           </Card>
         )}
-
-        {/* Detailed Project View Dialog */}
-        <Dialog open={!!selectedProject} onOpenChange={(open) => !open && setSelectedProject(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            {selectedProject && (
-              <>
-                <DialogHeader>
-                  <DialogTitle className="text-2xl">{selectedProject.title}</DialogTitle>
-                  <DialogDescription>
-                    Submitted by {selectedProject.users.first_name || selectedProject.users.username}{" "}
-                    {selectedProject.users.last_name} • {new Date(selectedProject.created_at).toLocaleDateString()}
-                  </DialogDescription>
-                </DialogHeader>
-
-                <div className="space-y-6 mt-4">
-                  {/* Project Summary */}
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Project Summary</h3>
-                    <div className="text-base leading-relaxed">
-                      <ReactMarkdown
-                        components={{
-                          h1: ({ node, ...props }) => (
-                            <h1 className="text-2xl font-bold mb-4 mt-6" {...props} />
-                          ),
-                          h2: ({ node, ...props }) => (
-                            <h2 className="text-xl font-bold mb-3 mt-6" {...props} />
-                          ),
-                          h3: ({ node, ...props }) => (
-                            <h3 className="text-lg font-semibold mb-2 mt-4" {...props} />
-                          ),
-                          p: ({ node, ...props }) => (
-                            <p className="text-muted-foreground mb-4" {...props} />
-                          ),
-                          ul: ({ node, ...props }) => (
-                            <ul className="list-disc ml-6 mb-4 text-muted-foreground" {...props} />
-                          ),
-                          ol: ({ node, ...props }) => (
-                            <ol className="list-decimal ml-6 mb-4 text-muted-foreground" {...props} />
-                          ),
-                          li: ({ node, ...props }) => (
-                            <li className="my-1" {...props} />
-                          ),
-                          a: ({ node, ...props }) => (
-                            <a className="text-primary underline hover:text-primary/80" {...props} />
-                          ),
-                          strong: ({ node, ...props }) => (
-                            <strong className="font-bold" {...props} />
-                          ),
-                          em: ({ node, ...props }) => (
-                            <em className="italic" {...props} />
-                          ),
-                        }}
-                      >
-                        {selectedProject.summary}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Attachments */}
-                  {selectedProject.project_attachments && selectedProject.project_attachments.length > 0 && (
-                    <>
-                      <div>
-                        <h3 className="text-lg font-semibold mb-3">Attachments</h3>
-                        <ProjectAttachmentsCarousel attachments={selectedProject.project_attachments} />
-                      </div>
-                      <Separator />
-                    </>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4">
-                    {activeTab === "review" ? (
-                      <>
-                        <Button
-                          onClick={() => {
-                            acceptMutation.mutate(selectedProject.id);
-                            setSelectedProject(null);
-                          }}
-                          disabled={
-                            acceptMutation.isPending ||
-                            rejectMutation.isPending
-                          }
-                          className="bg-green-600 hover:bg-green-700 gap-2 flex-1"
-                        >
-                          {acceptMutation.isPending &&
-                            acceptMutation.variables === selectedProject.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4" />
-                          )}
-                          Accept
-                        </Button>
-                        <Button
-                          onClick={() => {
-                            rejectMutation.mutate(selectedProject.id);
-                            setSelectedProject(null);
-                          }}
-                          disabled={
-                            acceptMutation.isPending ||
-                            rejectMutation.isPending
-                          }
-                          variant="destructive"
-                          className="gap-2 flex-1"
-                        >
-                          {rejectMutation.isPending &&
-                            rejectMutation.variables === selectedProject.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <XCircle className="h-4 w-4" />
-                          )}
-                          Reject
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        onClick={() => {
-                          restoreMutation.mutate(selectedProject.id);
-                          setSelectedProject(null);
-                        }}
-                        disabled={restoreMutation.isPending}
-                        className="bg-blue-600 hover:bg-blue-700 gap-2 flex-1"
-                      >
-                        {restoreMutation.isPending &&
-                          restoreMutation.variables === selectedProject.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <RotateCcw className="h-4 w-4" />
-                        )}
-                        Restore to Review
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      onClick={() => setSelectedProject(null)}
-                    >
-                      <X className="h-4 w-4 mr-2" />
-                      Close
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
       </div>
     </main>
   );

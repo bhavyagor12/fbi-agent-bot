@@ -10,16 +10,20 @@ create table public.users (
   username text null,
   first_name text null,
   last_name text null,
+  email text null,
+  profile_picture_url text null,
+  approved boolean not null default false,
   xp integer not null default 0,
   tier text not null default 'bronze'::text,
   constraint users_pkey primary key (id),
   constraint users_wallet_address_unique unique (wallet_address),
   constraint users_telegram_user_id_unique unique (telegram_user_id),
+  constraint users_email_unique unique (email),
   constraint users_tier_check check (
     tier = any (array['bronze'::text, 'silver'::text, 'gold'::text, 'platinum'::text, 'diamond'::text])
   ),
   constraint users_identity_check check (
-    telegram_user_id is not null or wallet_address is not null
+    telegram_user_id is not null or wallet_address is not null or email is not null
   )
 ) TABLESPACE pg_default;
 
@@ -32,15 +36,9 @@ create table public.projects (
   telegram_message_id bigint null,
   telegram_chat_id bigint null,
   user_id bigint null,
-  status text null default 'in_review'::text,
   feedback_summary text null,
   constraint projects_pkey primary key (id),
-  constraint projects_user_id_fkey foreign KEY (user_id) references users (id),
-  constraint projects_status_check check (
-    (
-      status = any (array['in_review'::text, 'active'::text, 'archived'::text])
-    )
-  )
+  constraint projects_user_id_fkey foreign KEY (user_id) references users (id)
 ) TABLESPACE pg_default;
 
 create index IF not exists projects_telegram_message_id_idx on public.projects using btree (telegram_message_id) TABLESPACE pg_default;
@@ -56,6 +54,7 @@ create table public.feedback (
   content text null,
   message_id bigint not null,
   parent_message_id bigint null,
+  reply_to_content text null,
   media_url text null,
   media_type text null,
   score_relevance integer null,

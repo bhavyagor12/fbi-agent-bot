@@ -93,12 +93,13 @@ export async function summarizeFeedback(
       return null;
     }
 
-    // Clean up any markdown or code blocks if present
+    // Clean up code block markers if present (but preserve markdown content)
     const cleanText = text
-      .replace(/```/g, "")
-      .replace(/json/g, "")
+      .replace(/^```markdown\n?/i, "")
+      .replace(/^```\n?/, "")
+      .replace(/\n?```$/g, "")
       .trim();
-    
+
     return cleanText;
   } catch (error) {
     console.error("Error summarizing feedback:", error);

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FBI Project Archives",
+  title: "Radar Room",
   description: "Read through feedback and reviews for the projects of our users",
 };
 

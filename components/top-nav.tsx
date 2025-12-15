@@ -1,47 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePrivy } from "@privy-io/react-auth";
+import { useUser } from "@/components/user-provider";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShieldCheck, Home } from "lucide-react";
+import { ShieldCheck, Home, Radar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WalletConnectButton from "@/components/wallet-connect-button";
 import CreateProjectForm from "@/components/create-project-form";
 import { Separator } from "@/components/ui/separator";
 
 export default function TopNav() {
-  const { authenticated, ready, user } = usePrivy();
+  const { authenticated } = usePrivy();
+  const { isWhitelisted } = useUser();
   const pathname = usePathname();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [isWhitelisted, setIsWhitelisted] = useState(false);
-
-  const walletAddress = user?.wallet?.address?.toLowerCase();
-
-  // Check if wallet is whitelisted
-  useEffect(() => {
-    async function checkWhitelist() {
-      if (!authenticated || !walletAddress) {
-        setIsWhitelisted(false);
-        return;
-      }
-
-      try {
-        const res = await fetch(
-          `/api/checkWhitelist?wallet=${encodeURIComponent(walletAddress)}`
-        );
-        const data = await res.json();
-        setIsWhitelisted(data.isWhitelisted);
-      } catch (error) {
-        console.error("Error checking whitelist:", error);
-        setIsWhitelisted(false);
-      }
-    }
-
-    if (ready) {
-      checkWhitelist();
-    }
-  }, [authenticated, walletAddress, ready]);
 
   return (
     <>
@@ -52,12 +26,10 @@ export default function TopNav() {
             <div className="flex items-center gap-6">
               <Link href="/" className="flex items-center gap-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                  <span className="text-lg font-bold text-primary-foreground">
-                    F
-                  </span>
+                  <Radar className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <span className="text-xl font-bold text-foreground">
-                  FBI Archives
+                  Radar Room
                 </span>
               </Link>
 

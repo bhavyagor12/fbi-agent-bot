@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useRef, DragEvent, useEffect } from "react";
+import { useUser } from "@/components/user-provider";
 import { usePrivy } from "@privy-io/react-auth";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { X, Upload, Image as ImageIcon, Loader2, Info } from "lucide-react";
 import { validateFile } from "@/lib/supabase-storage";
-import { getUserByWallet } from "@/lib/supabase";
+import { getUserByWallet, getUserByEmail } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -26,7 +27,8 @@ export default function CreateProjectForm({
   onClose,
   onSuccess,
 }: CreateProjectFormProps) {
-  const { user } = usePrivy();
+  const { user } = usePrivy(); // Keep privy user for fallback if needed
+  const { user: dbUser, isLoading: userLoading } = useUser();
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [intro, setIntro] = useState("");
@@ -37,7 +39,6 @@ export default function CreateProjectForm({
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
-  const [checkingProfile, setCheckingProfile] = useState(true);
   const [profileComplete, setProfileComplete] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -46,59 +47,26 @@ export default function CreateProjectForm({
 
   // Check profile completeness on mount
   useEffect(() => {
-    async function checkProfile() {
-      const privyWallet = user?.wallet?.address?.toLowerCase();
-      
-      // If no Privy wallet, user needs to set wallet address in settings first
-      if (!privyWallet) {
-        setCheckingProfile(false);
-        setProfileComplete(false);
-        setMissingFields(["Wallet address", "Telegram username", "First name", "Last name"]);
-        return;
-      }
+    if (userLoading) return;
 
-      setWalletAddress(privyWallet);
+    if (dbUser) {
+      setWalletAddress(dbUser.wallet_address || "");
 
-      try {
-        const { data: userData, error: userError } = await getUserByWallet(privyWallet);
+      const missing: string[] = [];
+      if (!dbUser.username) missing.push("Telegram username");
+      if (!dbUser.first_name) missing.push("First name");
+      if (!dbUser.last_name) missing.push("Last name");
 
-        if (userError || !userData) {
-          // User doesn't exist yet, profile is incomplete
-          setMissingFields(["Telegram username", "First name", "Last name"]);
-          setProfileComplete(false);
-        } else {
-          // Check if user has wallet address (should always be true if found by wallet)
-          if (!userData.wallet_address) {
-            setMissingFields(["Wallet address", "Telegram username", "First name", "Last name"]);
-            setProfileComplete(false);
-            return;
-          }
+      const hasIdentity = !!dbUser.wallet_address || !!dbUser.email;
+      if (!hasIdentity) missing.push("Wallet address or Email");
 
-          const missing: string[] = [];
-          if (!userData.username) missing.push("Telegram username");
-          if (!userData.first_name) missing.push("First name");
-          if (!userData.last_name) missing.push("Last name");
-
-          if (missing.length > 0) {
-            setMissingFields(missing);
-            setProfileComplete(false);
-          } else {
-            setProfileComplete(true);
-            setWalletAddress(userData.wallet_address);
-          }
-        }
-      } catch (error) {
-        console.error("Error checking profile:", error);
-        // On error, assume profile is incomplete
-        setMissingFields(["Telegram username", "First name", "Last name"]);
-        setProfileComplete(false);
-      } finally {
-        setCheckingProfile(false);
-      }
+      setMissingFields(missing);
+      setProfileComplete(missing.length === 0);
+    } else {
+      setProfileComplete(false);
+      setMissingFields(["Profile not set up"]);
     }
-
-    checkProfile();
-  }, [user]);
+  }, [dbUser, userLoading]);
 
   const handleDrag = (e: DragEvent) => {
     e.preventDefault();
@@ -162,9 +130,11 @@ export default function CreateProjectForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // If profile is incomplete, redirect to settings
-    if (!walletAddress || !profileComplete) {
+    // Check if we have wallet OR email
+    const hasIdentity = walletAddress || (user?.google?.email || user?.email?.address);
+    if (!hasIdentity || !profileComplete) {
       handleGoToSettings();
       return;
     }
@@ -179,7 +149,15 @@ export default function CreateProjectForm({
       formData.append("features", features);
       formData.append("what_to_test", whatToTest);
       formData.append("product_link", productLink);
-      formData.append("wallet_address", walletAddress.toLowerCase());
+
+      if (walletAddress) {
+        formData.append("wallet_address", walletAddress.toLowerCase());
+      }
+
+      const email = user?.google?.email || user?.email?.address;
+      if (email) {
+        formData.append("email", email);
+      }
 
       files.forEach((file) => {
         formData.append("files", file);
@@ -204,7 +182,7 @@ export default function CreateProjectForm({
 
       // Success!
       toast.success("Project created successfully!", {
-        description: "Your project is under review and will appear once approved by an admin.",
+        description: "Your project is now live and visible to the community.",
       });
       onSuccess?.();
       onClose();
@@ -221,7 +199,7 @@ export default function CreateProjectForm({
     router.push("/settings");
   };
 
-  if (checkingProfile) {
+  if (userLoading) {
     return (
       <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
         <DialogContent className="sm:max-w-2xl">
@@ -363,13 +341,12 @@ export default function CreateProjectForm({
               onDragOver={handleDrag}
               onDrop={handleDrop}
               onClick={() => profileComplete && fileInputRef.current?.click()}
-              className={`relative rounded-lg border-2 border-dashed p-8 text-center transition-all ${
-                !profileComplete
-                  ? "cursor-not-allowed opacity-50"
-                  : dragActive
+              className={`relative rounded-lg border-2 border-dashed p-8 text-center transition-all ${!profileComplete
+                ? "cursor-not-allowed opacity-50"
+                : dragActive
                   ? "cursor-pointer border-primary bg-primary/5"
                   : "cursor-pointer border-border/50 bg-background/20 hover:bg-background/50 hover:border-border"
-              }`}
+                }`}
             >
               <input
                 ref={fileInputRef}
@@ -428,17 +405,17 @@ export default function CreateProjectForm({
             </div>
           )}
 
-          {/* Project Review Info */}
+          {/* Project Info */}
           {profileComplete && (
-            <div className="rounded-lg bg-blue-500/10 border border-blue-500/20 p-4">
+            <div className="rounded-lg bg-green-500/10 border border-green-500/20 p-4">
               <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-blue-500 mt-0.5 shrink-0" />
+                <Info className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-blue-500 mb-1">
-                    Project Review Process
+                  <p className="text-sm font-medium text-green-500 mb-1">
+                    Ready to Submit
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Your project will be submitted for review. It will only appear publicly once an admin approves it. You can check the status in your profile settings.
+                    Your project will be published immediately and visible to the community.
                   </p>
                 </div>
               </div>

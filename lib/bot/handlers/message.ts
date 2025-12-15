@@ -6,16 +6,18 @@ import {
   getFeedbackByMessageId,
   getOrUpsertUser,
   findProjectByName,
-  getActiveProjects,
+  getAllProjects,
   getProjectById,
   updateFeedbackScores,
   updateUserXP,
   findSimilarFeedback,
   updateFeedbackEmbedding,
+  updateUserProfile,
 } from "../../supabase";
 import { calculateFeedbackXP } from "../../xp";
 import { analyzeFeedback } from "../../ai";
 import { generateEmbedding, isFeedbackOriginal } from "../../embeddings";
+import { getTelegramProfilePicture } from "../utils/profile-picture";
 
 type SimilarFeedback = {
   id: number;
@@ -44,15 +46,107 @@ export async function handleMessage(ctx: Context) {
   }
 
   // Upsert User (always good to keep user data fresh)
-  const { data: user, error: userError } = await getOrUpsertUser({
+  // First get existing user to check if we need to fetch profile picture
+  let profilePictureUrl: string | undefined;
+
+  // Fetch profile picture for first-time users or if not yet stored
+  // We do this async to not block the message handling
+  const existingUser = await getOrUpsertUser({
     telegram_user_id: message.from.id,
     username: message.from.username,
     first_name: message.from.first_name,
     last_name: message.from.last_name,
   });
 
+  // If user doesn't have a profile picture stored, try to fetch it
+  if (existingUser.data && !existingUser.data.profile_picture_url) {
+    profilePictureUrl = await getTelegramProfilePicture(message.from.id) || undefined;
+
+    // Update user with profile picture if we got one
+    if (profilePictureUrl) {
+      await getOrUpsertUser({
+        telegram_user_id: message.from.id,
+        username: message.from.username,
+        first_name: message.from.first_name,
+        last_name: message.from.last_name,
+        profile_picture_url: profilePictureUrl,
+      });
+    }
+  }
+
+  const { data: user, error: userError } = existingUser;
+
   if (userError || !user) {
     console.error("Error getting/creating user:", userError);
+    return;
+  }
+
+  // Handle private/DM messages for wallet address collection
+  if (message.chat.type === "private") {
+    const replyTo = message.reply_to_message;
+
+    // Check if this is a reply to the bot's wallet address request
+    if (
+      replyTo &&
+      replyTo.from?.id === ctx.me.id &&
+      replyTo.text?.includes("wallet address")
+    ) {
+      // User is replying with their wallet address
+      const walletAddress = text.trim();
+
+      // Validate Ethereum address format (0x followed by 40 hex characters)
+      const isValidAddress = /^0x[a-fA-F0-9]{40}$/.test(walletAddress);
+
+      if (isValidAddress) {
+        // Save the wallet address
+        const { error: updateError } = await updateUserProfile(user.id, {
+          wallet_address: walletAddress,
+        });
+
+        if (updateError) {
+          console.error("Error updating wallet address:", updateError);
+          await ctx.reply(
+            "❌ Sorry, there was an error saving your wallet address. Please try again.",
+            { parse_mode: "Markdown" }
+          );
+        } else {
+          console.log(`[WALLET] Saved wallet address ${walletAddress} for user ${user.id}`);
+          await ctx.reply(
+            `✅ Your wallet address has been saved!\n\n\`${walletAddress}\`\n\nYour Telegram account is now linked to this wallet.`,
+            { parse_mode: "Markdown" }
+          );
+        }
+        return; // Message handled, don't process further
+      } else {
+        // Invalid address format
+        await ctx.reply(
+          "❌ That doesn't look like a valid Ethereum address. Please send a valid address starting with `0x` (42 characters total).",
+          {
+            parse_mode: "Markdown",
+            reply_markup: { force_reply: true }
+          }
+        );
+        return;
+      }
+    }
+
+    // If user doesn't have a wallet address, prompt them
+    if (!user.wallet_address) {
+      await ctx.reply(
+        "👋 Welcome! To link your account, please reply to this message with your Ethereum wallet address.\n\nExample: `0x1234...abcd`",
+        {
+          parse_mode: "Markdown",
+          reply_markup: { force_reply: true }
+        }
+      );
+      return;
+    }
+
+    // User has wallet but not replying to wallet request - just acknowledge
+    await ctx.reply(
+      `👋 Hello! Your wallet is already linked: \`${user.wallet_address}\`\n\nUse /help to see available commands.`,
+      { parse_mode: "Markdown" }
+    );
     return;
   }
 
@@ -66,8 +160,7 @@ export async function handleMessage(ctx: Context) {
     (ctx.update.message as any)?.message_thread_id;
 
   console.log(
-    `[DEBUG] Message ID: ${message.message_id}, Thread ID: ${
-      messageThreadId || "none"
+    `[DEBUG] Message ID: ${message.message_id}, Thread ID: ${messageThreadId || "none"
     }, Chat ID: ${message.chat.id}, Chat Type: ${message.chat.type}`
   );
 
@@ -142,7 +235,7 @@ export async function handleMessage(ctx: Context) {
   // Case 2: No reply and not in topic, check for project name mention (EXISTING)
   if (!projectId && text) {
     // Get all active projects to check against
-    const { data: projects } = await getActiveProjects();
+    const { data: projects } = await getAllProjects();
     if (projects) {
       for (const p of projects) {
         if (text.toLowerCase().includes(p.title.toLowerCase())) {
@@ -183,12 +276,16 @@ export async function handleMessage(ctx: Context) {
     mediaUrl = message.document.file_id;
   }
 
+  // Capture the content of the message being replied to (for chain of thought)
+  const replyToContent = replyTo ? (replyTo.text || replyTo.caption || null) : null;
+
   const { data: savedFeedback, error } = await createFeedback({
     project_id: projectId,
     user_id: user.id,
     content: text,
     message_id: message.message_id,
     parent_message_id: replyTo?.message_id,
+    reply_to_content: replyToContent,
     media_url: mediaUrl,
     media_type: mediaType,
   });
