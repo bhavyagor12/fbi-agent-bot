@@ -276,7 +276,7 @@ export default function ReviewPage() {
         ) : projects.length > 0 ? (
           <div className="space-y-4">
             {projects.map((project: Project) => (
-              <Card 
+              <Card
                 key={project.id}
                 className="cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() => setSelectedProject(project)}
@@ -301,7 +301,7 @@ export default function ReviewPage() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div 
+                    <div
                       className="flex flex-col gap-3 min-w-[140px]"
                       onClick={(e) => e.stopPropagation()}
                     >
@@ -316,7 +316,7 @@ export default function ReviewPage() {
                             className="bg-green-600 hover:bg-green-700 gap-2"
                           >
                             {acceptMutation.isPending &&
-                            acceptMutation.variables === project.id ? (
+                              acceptMutation.variables === project.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <CheckCircle className="h-4 w-4" />
@@ -333,7 +333,7 @@ export default function ReviewPage() {
                             className="gap-2"
                           >
                             {rejectMutation.isPending &&
-                            rejectMutation.variables === project.id ? (
+                              rejectMutation.variables === project.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <XCircle className="h-4 w-4" />
@@ -348,7 +348,7 @@ export default function ReviewPage() {
                           className="bg-blue-600 hover:bg-blue-700 gap-2"
                         >
                           {restoreMutation.isPending &&
-                          restoreMutation.variables === project.id ? (
+                            restoreMutation.variables === project.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <RotateCcw className="h-4 w-4" />
@@ -397,8 +397,43 @@ export default function ReviewPage() {
                   {/* Project Summary */}
                   <div>
                     <h3 className="text-lg font-semibold mb-3">Project Summary</h3>
-                    <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-4 prose-h3:mb-2 prose-p:text-muted-foreground prose-p:mb-4 prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ul:ml-6 prose-ol:list-decimal prose-ol:ml-6 prose-li:my-1">
-                      <ReactMarkdown>{selectedProject.summary}</ReactMarkdown>
+                    <div className="text-base leading-relaxed">
+                      <ReactMarkdown
+                        components={{
+                          h1: ({ node, ...props }) => (
+                            <h1 className="text-2xl font-bold mb-4 mt-6" {...props} />
+                          ),
+                          h2: ({ node, ...props }) => (
+                            <h2 className="text-xl font-bold mb-3 mt-6" {...props} />
+                          ),
+                          h3: ({ node, ...props }) => (
+                            <h3 className="text-lg font-semibold mb-2 mt-4" {...props} />
+                          ),
+                          p: ({ node, ...props }) => (
+                            <p className="text-muted-foreground mb-4" {...props} />
+                          ),
+                          ul: ({ node, ...props }) => (
+                            <ul className="list-disc ml-6 mb-4 text-muted-foreground" {...props} />
+                          ),
+                          ol: ({ node, ...props }) => (
+                            <ol className="list-decimal ml-6 mb-4 text-muted-foreground" {...props} />
+                          ),
+                          li: ({ node, ...props }) => (
+                            <li className="my-1" {...props} />
+                          ),
+                          a: ({ node, ...props }) => (
+                            <a className="text-primary underline hover:text-primary/80" {...props} />
+                          ),
+                          strong: ({ node, ...props }) => (
+                            <strong className="font-bold" {...props} />
+                          ),
+                          em: ({ node, ...props }) => (
+                            <em className="italic" {...props} />
+                          ),
+                        }}
+                      >
+                        {selectedProject.summary}
+                      </ReactMarkdown>
                     </div>
                   </div>
 
@@ -431,7 +466,7 @@ export default function ReviewPage() {
                           className="bg-green-600 hover:bg-green-700 gap-2 flex-1"
                         >
                           {acceptMutation.isPending &&
-                          acceptMutation.variables === selectedProject.id ? (
+                            acceptMutation.variables === selectedProject.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <CheckCircle className="h-4 w-4" />
@@ -451,7 +486,7 @@ export default function ReviewPage() {
                           className="gap-2 flex-1"
                         >
                           {rejectMutation.isPending &&
-                          rejectMutation.variables === selectedProject.id ? (
+                            rejectMutation.variables === selectedProject.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <XCircle className="h-4 w-4" />
@@ -469,7 +504,7 @@ export default function ReviewPage() {
                         className="bg-blue-600 hover:bg-blue-700 gap-2 flex-1"
                       >
                         {restoreMutation.isPending &&
-                        restoreMutation.variables === selectedProject.id ? (
+                          restoreMutation.variables === selectedProject.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <RotateCcw className="h-4 w-4" />

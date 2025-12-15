@@ -197,8 +197,43 @@ export default function ProjectDetailsPage() {
                 </div>
               </div>
               {project.summary && (
-                <div className="text-base leading-relaxed pt-2 prose prose-sm max-w-none dark:prose-invert prose-headings:font-semibold prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-4 prose-h3:mb-2 prose-p:text-muted-foreground prose-p:mb-4 prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ul:ml-6 prose-ol:list-decimal prose-ol:ml-6 prose-li:my-1">
-                  <ReactMarkdown>{project.summary}</ReactMarkdown>
+                <div className="text-base leading-relaxed pt-2">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({ node, ...props }) => (
+                        <h1 className="text-2xl font-bold mb-4 mt-6" {...props} />
+                      ),
+                      h2: ({ node, ...props }) => (
+                        <h2 className="text-xl font-bold mb-3 mt-6" {...props} />
+                      ),
+                      h3: ({ node, ...props }) => (
+                        <h3 className="text-lg font-semibold mb-2 mt-4" {...props} />
+                      ),
+                      p: ({ node, ...props }) => (
+                        <p className="text-muted-foreground mb-4" {...props} />
+                      ),
+                      ul: ({ node, ...props }) => (
+                        <ul className="list-disc ml-6 mb-4 text-muted-foreground" {...props} />
+                      ),
+                      ol: ({ node, ...props }) => (
+                        <ol className="list-decimal ml-6 mb-4 text-muted-foreground" {...props} />
+                      ),
+                      li: ({ node, ...props }) => (
+                        <li className="my-1" {...props} />
+                      ),
+                      a: ({ node, ...props }) => (
+                        <a className="text-primary underline hover:text-primary/80" {...props} />
+                      ),
+                      strong: ({ node, ...props }) => (
+                        <strong className="font-bold" {...props} />
+                      ),
+                      em: ({ node, ...props }) => (
+                        <em className="italic" {...props} />
+                      ),
+                    }}
+                  >
+                    {project.summary}
+                  </ReactMarkdown>
                 </div>
               )}
             </div>
@@ -255,26 +290,26 @@ export default function ProjectDetailsPage() {
           {/* Feedback List */}
           <Card>
             <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[300px]">User</TableHead>
-                    <TableHead>Feedback</TableHead>
-                    <TableHead className="w-[150px]">XP & Tier</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {project.feedback.length > 0 ? (
-                    project.feedback
-                      .filter((feedback) => {
-                        // Filter out bot messages - check if username ends with _bot or contains 'bot'
-                        const username = feedback.users?.username?.toLowerCase() || "";
-                        return !username.endsWith("_bot") && !username.includes("_bot_");
-                      })
-                      .map((feedback) => {
-                        const userName = getUserDisplayName(feedback.users);
-                        const userInitial = userName.charAt(0).toUpperCase();
-                        return (
-                        <TableRow 
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[300px]">User</TableHead>
+                  <TableHead>Feedback</TableHead>
+                  <TableHead className="w-[150px]">XP & Tier</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {project.feedback.length > 0 ? (
+                  project.feedback
+                    .filter((feedback) => {
+                      // Filter out bot messages - check if username ends with _bot or contains 'bot'
+                      const username = feedback.users?.username?.toLowerCase() || "";
+                      return !username.endsWith("_bot") && !username.includes("_bot_");
+                    })
+                    .map((feedback) => {
+                      const userName = getUserDisplayName(feedback.users);
+                      const userInitial = userName.charAt(0).toUpperCase();
+                      return (
+                        <TableRow
                           key={feedback.id}
                           className="cursor-pointer hover:bg-muted/50 transition-colors"
                           onClick={() => setSelectedFeedback(feedback)}
@@ -302,8 +337,8 @@ export default function ProjectDetailsPage() {
                             <div className="space-y-2">
                               {feedback.content && (
                                 <p className="line-clamp-3">
-                                  &quot;{feedback.content.length > 150 
-                                    ? `${feedback.content.substring(0, 150)}...` 
+                                  &quot;{feedback.content.length > 150
+                                    ? `${feedback.content.substring(0, 150)}...`
                                     : feedback.content}&quot;
                                 </p>
                               )}
@@ -319,8 +354,8 @@ export default function ProjectDetailsPage() {
                                       />
                                     </div>
                                   ) : feedback.media_type?.startsWith(
-                                      "video"
-                                    ) ? (
+                                    "video"
+                                  ) ? (
                                     <video
                                       src={feedback.media_url}
                                       controls
@@ -331,78 +366,68 @@ export default function ProjectDetailsPage() {
                               )}
                               {(feedback.score_relevance !== null ||
                                 feedback.score_depth !== null) && (
-                                <div className="flex flex-wrap gap-2 mt-2">
-                                  {feedback.score_relevance !== null && (
-                                    <Badge
-                                      variant="secondary"
-                                      className={`${
-                                        getScoreColor(feedback.score_relevance)
-                                          .bg
-                                      } ${
-                                        getScoreColor(feedback.score_relevance)
-                                          .text
-                                      }`}
-                                    >
-                                      Relevance: {feedback.score_relevance}/10
-                                    </Badge>
-                                  )}
-                                  {feedback.score_depth !== null && (
-                                    <Badge
-                                      variant="secondary"
-                                      className={`${
-                                        getScoreColor(feedback.score_depth).bg
-                                      } ${
-                                        getScoreColor(feedback.score_depth).text
-                                      }`}
-                                    >
-                                      Depth: {feedback.score_depth}/10
-                                    </Badge>
-                                  )}
-                                  {feedback.score_evidence !== null && (
-                                    <Badge
-                                      variant="secondary"
-                                      className={`${
-                                        getScoreColor(feedback.score_evidence)
-                                          .bg
-                                      } ${
-                                        getScoreColor(feedback.score_evidence)
-                                          .text
-                                      }`}
-                                    >
-                                      Evidence: {feedback.score_evidence}/10
-                                    </Badge>
-                                  )}
-                                  {feedback.score_constructiveness !== null && (
-                                    <Badge
-                                      variant="secondary"
-                                      className={`${
-                                        getScoreColor(
+                                  <div className="flex flex-wrap gap-2 mt-2">
+                                    {feedback.score_relevance !== null && (
+                                      <Badge
+                                        variant="secondary"
+                                        className={`${getScoreColor(feedback.score_relevance)
+                                            .bg
+                                          } ${getScoreColor(feedback.score_relevance)
+                                            .text
+                                          }`}
+                                      >
+                                        Relevance: {feedback.score_relevance}/10
+                                      </Badge>
+                                    )}
+                                    {feedback.score_depth !== null && (
+                                      <Badge
+                                        variant="secondary"
+                                        className={`${getScoreColor(feedback.score_depth).bg
+                                          } ${getScoreColor(feedback.score_depth).text
+                                          }`}
+                                      >
+                                        Depth: {feedback.score_depth}/10
+                                      </Badge>
+                                    )}
+                                    {feedback.score_evidence !== null && (
+                                      <Badge
+                                        variant="secondary"
+                                        className={`${getScoreColor(feedback.score_evidence)
+                                            .bg
+                                          } ${getScoreColor(feedback.score_evidence)
+                                            .text
+                                          }`}
+                                      >
+                                        Evidence: {feedback.score_evidence}/10
+                                      </Badge>
+                                    )}
+                                    {feedback.score_constructiveness !== null && (
+                                      <Badge
+                                        variant="secondary"
+                                        className={`${getScoreColor(
                                           feedback.score_constructiveness
                                         ).bg
-                                      } ${
-                                        getScoreColor(
-                                          feedback.score_constructiveness
-                                        ).text
-                                      }`}
-                                    >
-                                      Constructiveness:{" "}
-                                      {feedback.score_constructiveness}/10
-                                    </Badge>
-                                  )}
-                                  {feedback.score_tone !== null && (
-                                    <Badge
-                                      variant="secondary"
-                                      className={`${
-                                        getScoreColor(feedback.score_tone).bg
-                                      } ${
-                                        getScoreColor(feedback.score_tone).text
-                                      }`}
-                                    >
-                                      Tone: {feedback.score_tone}/10
-                                    </Badge>
-                                  )}
-                                </div>
-                              )}
+                                          } ${getScoreColor(
+                                            feedback.score_constructiveness
+                                          ).text
+                                          }`}
+                                      >
+                                        Constructiveness:{" "}
+                                        {feedback.score_constructiveness}/10
+                                      </Badge>
+                                    )}
+                                    {feedback.score_tone !== null && (
+                                      <Badge
+                                        variant="secondary"
+                                        className={`${getScoreColor(feedback.score_tone).bg
+                                          } ${getScoreColor(feedback.score_tone).text
+                                          }`}
+                                      >
+                                        Tone: {feedback.score_tone}/10
+                                      </Badge>
+                                    )}
+                                  </div>
+                                )}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -416,15 +441,13 @@ export default function ProjectDetailsPage() {
                               {feedback.users?.tier && (
                                 <Badge
                                   variant="secondary"
-                                  className={`w-fit ${
-                                    getTierColor(
-                                      feedback.users.tier as UserTier
-                                    ).bg
-                                  } ${
-                                    getTierColor(
+                                  className={`w-fit ${getTierColor(
+                                    feedback.users.tier as UserTier
+                                  ).bg
+                                    } ${getTierColor(
                                       feedback.users.tier as UserTier
                                     ).text
-                                  }`}
+                                    }`}
                                 >
                                   {
                                     getTierColor(
@@ -438,24 +461,24 @@ export default function ProjectDetailsPage() {
                         </TableRow>
                       );
                     })
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={3}
-                        className="h-24 text-center text-muted-foreground"
-                      >
-                        {project.feedback.filter((feedback) => {
-                          const username = feedback.users?.username?.toLowerCase() || "";
-                          return !username.endsWith("_bot") && !username.includes("_bot_");
-                        }).length === 0
-                          ? "No feedback yet."
-                          : "No results found."}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </Card>
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      {project.feedback.filter((feedback) => {
+                        const username = feedback.users?.username?.toLowerCase() || "";
+                        return !username.endsWith("_bot") && !username.includes("_bot_");
+                      }).length === 0
+                        ? "No feedback yet."
+                        : "No results found."}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </Card>
         </section>
 
         {/* Feedback Detail Modal */}
@@ -489,11 +512,9 @@ export default function ProjectDetailsPage() {
                   {selectedFeedback.users?.tier && (
                     <Badge
                       variant="secondary"
-                      className={`${
-                        getTierColor(selectedFeedback.users.tier as UserTier).bg
-                      } ${
-                        getTierColor(selectedFeedback.users.tier as UserTier).text
-                      }`}
+                      className={`${getTierColor(selectedFeedback.users.tier as UserTier).bg
+                        } ${getTierColor(selectedFeedback.users.tier as UserTier).text
+                        }`}
                     >
                       {getTierColor(selectedFeedback.users.tier as UserTier).label}
                     </Badge>
@@ -535,72 +556,62 @@ export default function ProjectDetailsPage() {
                   {/* Scores */}
                   {(selectedFeedback.score_relevance !== null ||
                     selectedFeedback.score_depth !== null) && (
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Scores</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedFeedback.score_relevance !== null && (
-                          <Badge
-                            variant="secondary"
-                            className={`${
-                              getScoreColor(selectedFeedback.score_relevance).bg
-                            } ${
-                              getScoreColor(selectedFeedback.score_relevance).text
-                            }`}
-                          >
-                            Relevance: {selectedFeedback.score_relevance}/10
-                          </Badge>
-                        )}
-                        {selectedFeedback.score_depth !== null && (
-                          <Badge
-                            variant="secondary"
-                            className={`${
-                              getScoreColor(selectedFeedback.score_depth).bg
-                            } ${
-                              getScoreColor(selectedFeedback.score_depth).text
-                            }`}
-                          >
-                            Depth: {selectedFeedback.score_depth}/10
-                          </Badge>
-                        )}
-                        {selectedFeedback.score_evidence !== null && (
-                          <Badge
-                            variant="secondary"
-                            className={`${
-                              getScoreColor(selectedFeedback.score_evidence).bg
-                            } ${
-                              getScoreColor(selectedFeedback.score_evidence).text
-                            }`}
-                          >
-                            Evidence: {selectedFeedback.score_evidence}/10
-                          </Badge>
-                        )}
-                        {selectedFeedback.score_constructiveness !== null && (
-                          <Badge
-                            variant="secondary"
-                            className={`${
-                              getScoreColor(selectedFeedback.score_constructiveness).bg
-                            } ${
-                              getScoreColor(selectedFeedback.score_constructiveness).text
-                            }`}
-                          >
-                            Constructiveness: {selectedFeedback.score_constructiveness}/10
-                          </Badge>
-                        )}
-                        {selectedFeedback.score_tone !== null && (
-                          <Badge
-                            variant="secondary"
-                            className={`${
-                              getScoreColor(selectedFeedback.score_tone).bg
-                            } ${
-                              getScoreColor(selectedFeedback.score_tone).text
-                            }`}
-                          >
-                            Tone: {selectedFeedback.score_tone}/10
-                          </Badge>
-                        )}
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Scores</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedFeedback.score_relevance !== null && (
+                            <Badge
+                              variant="secondary"
+                              className={`${getScoreColor(selectedFeedback.score_relevance).bg
+                                } ${getScoreColor(selectedFeedback.score_relevance).text
+                                }`}
+                            >
+                              Relevance: {selectedFeedback.score_relevance}/10
+                            </Badge>
+                          )}
+                          {selectedFeedback.score_depth !== null && (
+                            <Badge
+                              variant="secondary"
+                              className={`${getScoreColor(selectedFeedback.score_depth).bg
+                                } ${getScoreColor(selectedFeedback.score_depth).text
+                                }`}
+                            >
+                              Depth: {selectedFeedback.score_depth}/10
+                            </Badge>
+                          )}
+                          {selectedFeedback.score_evidence !== null && (
+                            <Badge
+                              variant="secondary"
+                              className={`${getScoreColor(selectedFeedback.score_evidence).bg
+                                } ${getScoreColor(selectedFeedback.score_evidence).text
+                                }`}
+                            >
+                              Evidence: {selectedFeedback.score_evidence}/10
+                            </Badge>
+                          )}
+                          {selectedFeedback.score_constructiveness !== null && (
+                            <Badge
+                              variant="secondary"
+                              className={`${getScoreColor(selectedFeedback.score_constructiveness).bg
+                                } ${getScoreColor(selectedFeedback.score_constructiveness).text
+                                }`}
+                            >
+                              Constructiveness: {selectedFeedback.score_constructiveness}/10
+                            </Badge>
+                          )}
+                          {selectedFeedback.score_tone !== null && (
+                            <Badge
+                              variant="secondary"
+                              className={`${getScoreColor(selectedFeedback.score_tone).bg
+                                } ${getScoreColor(selectedFeedback.score_tone).text
+                                }`}
+                            >
+                              Tone: {selectedFeedback.score_tone}/10
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* XP */}
                   {selectedFeedback.users?.xp !== undefined &&

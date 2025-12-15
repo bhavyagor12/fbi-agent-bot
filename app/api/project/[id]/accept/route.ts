@@ -78,8 +78,8 @@ export async function POST(
           }
         }
 
-        // Format message according to requirements
-        const messageText = `📋 *${data.title}*\n\n${data.summary}\n\nCheck project out at [${projectLink}](${projectLink})\n\nProject owner - ${ownerMention}\n\nAll msgs in these channel will be recorded as feedback`;
+        // Format message according to requirements (using HTML for better reliability)
+        const messageText = `📋 <b>${data.title}</b>\n\n${data.summary}\n\nCheck project out at <a href="${projectLink}">${projectLink}</a>\n\nProject owner - ${ownerMention}\n\nAll msgs in these channel will be recorded as feedback`;
 
         // 1. Try to create forum topic
         try {
@@ -111,7 +111,7 @@ export async function POST(
                   chat_id: chatId,
                   message_thread_id: forumTopicId,
                   text: messageText,
-                  parse_mode: "Markdown",
+                  parse_mode: "HTML",
                 }),
               }
             );
@@ -135,7 +135,7 @@ export async function POST(
               body: JSON.stringify({
                 chat_id: chatId,
                 text: messageText,
-                parse_mode: "Markdown",
+                parse_mode: "HTML",
               }),
             }
           );
