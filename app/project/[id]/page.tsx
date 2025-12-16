@@ -33,6 +33,7 @@ import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getScoreColor, getTierColor, UserTier } from "@/lib/colors";
 import { usePrivy } from "@privy-io/react-auth";
+import { useUser } from "@/components/user-provider";
 import { getUserByWallet } from "@/lib/supabase";
 import GenerateSummaryButton from "@/components/generate-summary-button";
 import ProjectAttachmentsCarousel from "@/components/project-attachments-carousel";
@@ -128,7 +129,8 @@ const getFeedbackXP = (feedback: Feedback): number => {
 export default function ProjectDetailsPage() {
   const params = useParams();
   const id = params.id as string;
-  const { user, authenticated } = usePrivy();
+  const { authenticated } = usePrivy();
+  const { user } = useUser();
   const queryClient = useQueryClient();
   const [isOwner, setIsOwner] = React.useState(false);
   const [checkingOwnership, setCheckingOwnership] = React.useState(true);
@@ -155,26 +157,11 @@ export default function ProjectDetailsPage() {
 
   // Check if current user is project owner
   React.useEffect(() => {
-    async function checkOwnership() {
-      if (!authenticated || !user?.wallet?.address || !project) {
-        setCheckingOwnership(false);
-        return;
-      }
-
-      try {
-        const { data: userData } = await getUserByWallet(user.wallet.address.toLowerCase());
-        if (userData && project.user_id && userData.id === project.user_id) {
-          setIsOwner(true);
-        }
-      } catch (error) {
-        console.error("Error checking ownership:", error);
-      } finally {
-        setCheckingOwnership(false);
-      }
+    if (user && project && Number(user.id) === Number(project.user_id)) {
+      setIsOwner(true);
     }
-
-    checkOwnership();
-  }, [authenticated, user, project]);
+    setCheckingOwnership(false);
+  }, [user, project]);
 
   if (isLoading) {
     return (
@@ -791,7 +778,8 @@ export default function ProjectDetailsPage() {
             </div>
           </DialogContent>
         </Dialog>
+
       </div>
-    </main>
+    </main >
   );
 }
