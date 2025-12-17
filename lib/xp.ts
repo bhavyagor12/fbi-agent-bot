@@ -55,9 +55,9 @@ export const TIER_THRESHOLDS: TierConfig[] = [
  * XP constants
  */
 export const XP_CONSTANTS = {
-  PROJECT_BASE: 200, // Fixed XP for creating a project
-  FEEDBACK_MIN: 200, // Minimum XP for any feedback
-  FEEDBACK_MAX: 500, // Maximum XP for perfect feedback
+  PROJECT_BASE: 50, // Fixed XP for creating a project
+  FEEDBACK_MIN: 40, // Minimum XP for any feedback
+  FEEDBACK_MAX: 100, // Maximum XP for perfect feedback
 };
 
 /**
@@ -92,7 +92,7 @@ export function calculateProjectXP(): number {
  *
  * @param scores - AI-evaluated scores
  * @param isOriginal - Whether the feedback is original (not too similar to existing feedback)
- * @returns XP amount (200-500 points), or 0 if not original
+ * @returns XP amount (40-100 points), or 0 if not original
  */
 export function calculateFeedbackXP(scores: {
   relevance: number;
@@ -112,7 +112,7 @@ export function calculateFeedbackXP(scores: {
   // Originality is not included in the average - it's only used as a gate
   const average = (relevance + depth + evidence + constructiveness + tone) / 5;
 
-  // Convert to XP scale (1-10 average -> 200-500 XP)
+  // Convert to XP scale (1-10 average -> 40-100 XP)
   // Map [1, 10] to [FEEDBACK_MIN, FEEDBACK_MAX]
   let xp =
     XP_CONSTANTS.FEEDBACK_MIN +
