@@ -158,6 +158,14 @@ export default function ProjectDetailsPage() {
     },
   });
 
+  // Extract project fields for editing (must be before early returns)
+  const projectFields = React.useMemo(() => {
+    if (project?.summary) {
+      return extractProjectFields(project.summary);
+    }
+    return { intro: '', features: '', whatToTest: '', productLink: '' };
+  }, [project?.summary]);
+
   // Check if current user is project owner
   React.useEffect(() => {
     if (user && project && Number(user.id) === Number(project.user_id)) {
@@ -199,14 +207,6 @@ export default function ProjectDetailsPage() {
   }
 
   const authorName = getUserDisplayName(project.users);
-
-  // Extract project fields for editing
-  const projectFields = React.useMemo(() => {
-    if (project.summary) {
-      return extractProjectFields(project.summary);
-    }
-    return { intro: '', features: '', whatToTest: '', productLink: '' };
-  }, [project.summary]);
 
   return (
     <main className="min-h-screen bg-background pb-20">
