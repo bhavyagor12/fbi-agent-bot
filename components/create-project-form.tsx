@@ -21,20 +21,32 @@ import { Input } from "@/components/ui/input";
 interface CreateProjectFormProps {
   onClose: () => void;
   onSuccess?: () => void;
+  projectId?: number;
+  initialData?: {
+    title: string;
+    intro: string;
+    features: string;
+    whatToTest: string;
+    productLink: string;
+  };
+  isEditing?: boolean;
 }
 
 export default function CreateProjectForm({
   onClose,
   onSuccess,
+  projectId,
+  initialData,
+  isEditing = false,
 }: CreateProjectFormProps) {
   const { user } = usePrivy(); // Keep privy user for fallback if needed
   const { user: dbUser, isLoading: userLoading } = useUser();
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [intro, setIntro] = useState("");
-  const [features, setFeatures] = useState("");
-  const [whatToTest, setWhatToTest] = useState("");
-  const [productLink, setProductLink] = useState("");
+  const [title, setTitle] = useState(initialData?.title || "");
+  const [intro, setIntro] = useState(initialData?.intro || "");
+  const [features, setFeatures] = useState(initialData?.features || "");
+  const [whatToTest, setWhatToTest] = useState(initialData?.whatToTest || "");
+  const [productLink, setProductLink] = useState(initialData?.productLink || "");
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -159,13 +171,17 @@ export default function CreateProjectForm({
         formData.append("email", email);
       }
 
-      files.forEach((file) => {
-        formData.append("files", file);
-      });
+      // Only append files if not editing (we don't support updating attachments yet)
+      if (!isEditing) {
+        files.forEach((file) => {
+          formData.append("files", file);
+        });
+      }
 
       // Submit to API
-      const response = await fetch("/api/createProject", {
-        method: "POST",
+      const apiUrl = isEditing ? `/api/project/${projectId}` : "/api/createProject";
+      const response = await fetch(apiUrl, {
+        method: isEditing ? "PUT" : "POST",
         body: formData,
       });
 
@@ -177,18 +193,20 @@ export default function CreateProjectForm({
           setProfileComplete(false);
           return;
         }
-        throw new Error(data.error || "Failed to create project");
+        throw new Error(data.error || `Failed to ${isEditing ? "update" : "create"} project`);
       }
 
       // Success!
-      toast.success("Project created successfully!", {
-        description: "Your project is now live and visible to the community.",
+      toast.success(isEditing ? "Project updated successfully!" : "Project created successfully!", {
+        description: isEditing 
+          ? "Your project has been updated."
+          : "Your project is now live and visible to the community.",
       });
       onSuccess?.();
       onClose();
     } catch (error) {
-      console.error("Error creating project:", error);
-      alert("Failed to create project. Please try again.");
+      console.error(`Error ${isEditing ? "updating" : "creating"} project:`, error);
+      alert(`Failed to ${isEditing ? "update" : "create"} project. Please try again.`);
     } finally {
       setUploading(false);
     }
@@ -216,9 +234,11 @@ export default function CreateProjectForm({
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Project</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Project" : "Create New Project"}</DialogTitle>
           <DialogDescription>
-            Share your project and get valuable feedback from the community
+            {isEditing 
+              ? "Update your project details"
+              : "Share your project and get valuable feedback from the community"}
           </DialogDescription>
         </DialogHeader>
 
@@ -318,7 +338,8 @@ export default function CreateProjectForm({
             </div>
           </div>
 
-          {/* File Upload */}
+          {/* File Upload - Hide when editing */}
+          {!isEditing && (
           <div>
             <label className="block text-sm font-medium mb-1.5">
               Attachments <span className="text-muted-foreground">(optional)</span>
@@ -391,6 +412,7 @@ export default function CreateProjectForm({
               </div>
             )}
           </div>
+          )}
 
           {/* Messages */}
           {!profileComplete && (
@@ -428,12 +450,12 @@ export default function CreateProjectForm({
                 {uploading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    Creating...
+                    {isEditing ? "Updating..." : "Creating..."}
                   </>
                 ) : (
                   <>
                     <ImageIcon className="h-4 w-4" />
-                    Create Project
+                    {isEditing ? "Update Project" : "Create Project"}
                   </>
                 )}
               </Button>

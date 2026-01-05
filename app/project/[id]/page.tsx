@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Award, ChevronRight, ArrowUpDown, Download } from "lucide-react";
+import { MessageSquare, Award, ChevronRight, ArrowUpDown, Download, Pencil } from "lucide-react";
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -38,6 +38,8 @@ import { getUserByWallet } from "@/lib/supabase";
 import GenerateSummaryButton from "@/components/generate-summary-button";
 import ProjectAttachmentsCarousel from "@/components/project-attachments-carousel";
 import { calculateFeedbackXP } from "@/lib/xp";
+import CreateProjectForm from "@/components/create-project-form";
+import { extractProjectFields } from "@/lib/utils";
 
 // Extended Project Interface
 interface UserInfo {
@@ -138,6 +140,7 @@ export default function ProjectDetailsPage() {
   const [selectedFeedbackIndex, setSelectedFeedbackIndex] = React.useState(0);
   const [xpSortDirection, setXpSortDirection] = React.useState<"asc" | "desc">("desc");
   const [feedbackSortDirection, setFeedbackSortDirection] = React.useState<"asc" | "desc" | null>(null);
+  const [showEditForm, setShowEditForm] = React.useState(false);
 
   const {
     data: project,
@@ -197,6 +200,14 @@ export default function ProjectDetailsPage() {
 
   const authorName = getUserDisplayName(project.users);
 
+  // Extract project fields for editing
+  const projectFields = React.useMemo(() => {
+    if (project.summary) {
+      return extractProjectFields(project.summary);
+    }
+    return { intro: '', features: '', whatToTest: '', productLink: '' };
+  }, [project.summary]);
+
   return (
     <main className="min-h-screen bg-background pb-20">
       <div className="mx-auto max-w-[90%] px-4 py-8 sm:px-6 lg:px-8 space-y-8">
@@ -204,6 +215,20 @@ export default function ProjectDetailsPage() {
         <Card>
           <CardHeader>
             <div className="space-y-4">
+              {/* Edit Button (Owner Only) */}
+              {!checkingOwnership && isOwner && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowEditForm(true)}
+                    className="gap-2"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit Project
+                  </Button>
+                </div>
+              )}
               <CardTitle className="text-3xl md:text-4xl">
                 {project.title}
               </CardTitle>
@@ -778,6 +803,22 @@ export default function ProjectDetailsPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Project Form */}
+        {showEditForm && (
+          <CreateProjectForm
+            onClose={() => setShowEditForm(false)}
+            onSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ["project", id] });
+            }}
+            projectId={project.id}
+            initialData={{
+              title: project.title,
+              ...projectFields,
+            }}
+            isEditing={true}
+          />
+        )}
 
       </div>
     </main >

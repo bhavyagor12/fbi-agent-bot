@@ -550,6 +550,22 @@ export async function updateProjectSummary(projectId: number, summary: string) {
     .single();
 }
 
+// Update project details
+export async function updateProject(
+  projectId: number,
+  updates: {
+    title?: string;
+    summary?: string;
+  }
+) {
+  return await supabaseServer
+    .from("projects")
+    .update(updates)
+    .eq("id", projectId)
+    .select()
+    .single();
+}
+
 // --- Feedback ---
 
 export async function createFeedback(feedback: {

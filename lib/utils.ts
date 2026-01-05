@@ -44,3 +44,26 @@ export function parseProjectSummary(
 
   return sections.join('\n\n');
 }
+
+/**
+ * Extract project fields from a markdown summary
+ * Reverse of parseProjectSummary
+ */
+export function extractProjectFields(summary: string): {
+  intro: string;
+  features: string;
+  whatToTest: string;
+  productLink: string;
+} {
+  const introMatch = summary.match(/## Intro\s*\n\n([\s\S]*?)(?=\n\n## |$)/);
+  const featuresMatch = summary.match(/## Features\s*\n\n([\s\S]*?)(?=\n\n## |$)/);
+  const whatToTestMatch = summary.match(/## What to Test\s*\n\n([\s\S]*?)(?=\n\n## |$)/);
+  const productLinkMatch = summary.match(/## Product Link\s*\n\n\[(.*?)\]\((.*?)\)/);
+
+  return {
+    intro: introMatch ? introMatch[1].trim() : '',
+    features: featuresMatch ? featuresMatch[1].trim() : '',
+    whatToTest: whatToTestMatch ? whatToTestMatch[1].trim() : '',
+    productLink: productLinkMatch ? productLinkMatch[2].trim() : '',
+  };
+}
