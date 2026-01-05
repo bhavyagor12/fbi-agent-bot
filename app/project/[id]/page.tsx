@@ -215,23 +215,22 @@ export default function ProjectDetailsPage() {
         <Card>
           <CardHeader>
             <div className="space-y-4">
-              {/* Edit Button (Owner Only) */}
-              {!checkingOwnership && isOwner && (
-                <div className="flex justify-end">
+              {/* Title and Edit Button */}
+              <div className="flex items-center justify-between gap-4">
+                <CardTitle className="text-3xl md:text-4xl">
+                  {project.title}
+                </CardTitle>
+                {!checkingOwnership && isOwner && (
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setShowEditForm(true)}
-                    className="gap-2"
+                    className="shrink-0"
                   >
                     <Pencil className="h-4 w-4" />
-                    Edit Project
                   </Button>
-                </div>
-              )}
-              <CardTitle className="text-3xl md:text-4xl">
-                {project.title}
-              </CardTitle>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center">
                   <span className="text-sm font-bold text-primary-foreground">
