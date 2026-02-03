@@ -2,9 +2,7 @@
  * First Dollar API Integration
  *
  * This module handles integration with the First Dollar app API
- * to check user scores based on their Telegram username.
- *
- * Currently mocked - replace with actual API calls when available.
+ * to check user onchain scores based on their Telegram username.
  */
 
 export interface FirstDollarUserScore {
@@ -13,18 +11,14 @@ export interface FirstDollarUserScore {
   threshold: number;
 }
 
+const FIRST_DOLLAR_ONCHAIN_SCORE_URL =
+  "https://app.firstdollar.money/api/onchain-score";
+
 // Default threshold - can be overridden by API response
 const DEFAULT_THRESHOLD = 50;
 
-// Mock user scores for testing (remove when real API is available)
-const MOCK_SCORES: Record<string, number> = {
-  // Add test usernames here for development
-  // "lowscoreuser": 30,
-  // "highscoreuser": 100,
-};
-
 /**
- * Fetches a user's score from the First Dollar API
+ * Fetches a user's onchain score from the First Dollar API
  *
  * @param telegramUsername - The user's Telegram username (without @)
  * @returns User score data including score and threshold, or null if user not found
@@ -37,59 +31,45 @@ export async function getFirstDollarScore(
     return null;
   }
 
-  // Remove @ prefix if present
-  const cleanUsername = telegramUsername.replace(/^@/, "");
+  const cleanUsername = telegramUsername.replace(/^@/, "").trim();
+  if (!cleanUsername) return null;
 
   try {
-    // TODO: Replace with actual API call when available
-    // Example API implementation:
-    // const response = await fetch(`${FIRST_DOLLAR_API_URL}/user/${cleanUsername}/score`, {
-    //   headers: {
-    //     "Authorization": `Bearer ${process.env.FIRST_DOLLAR_API_KEY}`,
-    //     "Content-Type": "application/json",
-    //   },
-    // });
-    //
-    // if (!response.ok) {
-    //   if (response.status === 404) {
-    //     return null; // User not found
-    //   }
-    //   throw new Error(`First Dollar API error: ${response.status}`);
-    // }
-    //
-    // const data = await response.json();
-    // return {
-    //   username: cleanUsername,
-    //   score: data.score,
-    //   threshold: data.threshold ?? DEFAULT_THRESHOLD,
-    // };
+    console.log(`[FirstDollar] Checking onchain score for user: ${cleanUsername}`);
 
-    // MOCK IMPLEMENTATION - Remove when real API is available
-    console.log(`[FirstDollar] Checking score for user: ${cleanUsername}`);
+    const response = await fetch(FIRST_DOLLAR_ONCHAIN_SCORE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegram_username: cleanUsername }),
+    });
 
-    // Check if user has a mock score defined
-    if (cleanUsername in MOCK_SCORES) {
-      const score = MOCK_SCORES[cleanUsername];
-      console.log(`[FirstDollar] Mock score for ${cleanUsername}: ${score}`);
-      return {
-        username: cleanUsername,
-        score,
-        threshold: DEFAULT_THRESHOLD,
-      };
+    const data = await response.json().catch(() => ({}));
+
+    if (response.status === 404) {
+      console.log(`[FirstDollar] User ${cleanUsername} not found`);
+      return null;
     }
 
-    // For users not in mock list, return score of 0 (not registered in First Dollar)
-    // This means they will be blocked - users must be in First Dollar to participate
-    console.log(`[FirstDollar] User ${cleanUsername} not found in First Dollar (will be blocked)`);
+    if (!response.ok) {
+      console.error(
+        `[FirstDollar] API error ${response.status}:`,
+        (data as { error?: string }).error ?? "Request failed"
+      );
+      return null;
+    }
+
+    const onchainScore =
+      typeof (data as { onchain_score?: number }).onchain_score === "number"
+        ? (data as { onchain_score: number }).onchain_score
+        : 0;
+
     return {
       username: cleanUsername,
-      score: 0,
+      score: onchainScore,
       threshold: DEFAULT_THRESHOLD,
     };
-
   } catch (error) {
     console.error("[FirstDollar] Error fetching user score:", error);
-    // On API error, fail open (allow the user) to prevent blocking legitimate users
     return null;
   }
 }

@@ -1,7 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY!;
+// Prefer server-only env var. NEXT_PUBLIC_* is inlined into the client bundle — never use it for the service role key in production.
+const supabaseServiceRoleKey =
+  process.env.SUPABASE_SERVICE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY ?? "";
 export const supabaseServer = createClient(supabaseUrl, supabaseServiceRoleKey);
 
 // --- Users ---
