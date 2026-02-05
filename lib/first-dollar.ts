@@ -25,14 +25,25 @@ const DEFAULT_THRESHOLD = 50;
  */
 export async function getFirstDollarScore(
   telegramUsername: string | undefined
-): Promise<FirstDollarUserScore | null> {
+): Promise<FirstDollarUserScore> {
   if (!telegramUsername) {
-    console.log("[FirstDollar] No username provided, cannot check score");
-    return null;
+    console.log("[FirstDollar] No username provided, treating as score 0");
+    return {
+      username: "unknown",
+      score: 0,
+      threshold: DEFAULT_THRESHOLD,
+    };
   }
 
   const cleanUsername = telegramUsername.replace(/^@/, "").trim();
-  if (!cleanUsername) return null;
+  if (!cleanUsername) {
+    console.log("[FirstDollar] Empty username provided, treating as score 0");
+    return {
+      username: "unknown",
+      score: 0,
+      threshold: DEFAULT_THRESHOLD,
+    };
+  }
 
   try {
     console.log(`[FirstDollar] Checking onchain score for user: ${cleanUsername}`);
@@ -60,7 +71,11 @@ export async function getFirstDollarScore(
         `[FirstDollar] API error ${response.status}:`,
         (data as { error?: string }).error ?? "Request failed"
       );
-      return null;
+      return {
+        username: cleanUsername,
+        score: 0,
+        threshold: DEFAULT_THRESHOLD,
+      };
     }
 
     const onchainScore =
@@ -75,7 +90,11 @@ export async function getFirstDollarScore(
     };
   } catch (error) {
     console.error("[FirstDollar] Error fetching user score:", error);
-    return null;
+    return {
+      username: telegramUsername?.replace(/^@/, "").trim() || "unknown",
+      score: 0,
+      threshold: DEFAULT_THRESHOLD,
+    };
   }
 }
 
@@ -92,13 +111,8 @@ export async function checkUserScoreThreshold(
   score: number;
   threshold: number;
   username: string;
-} | null> {
+}> {
   const scoreData = await getFirstDollarScore(telegramUsername);
-
-  if (!scoreData) {
-    // API error or request failure - allow by default to avoid false kicks.
-    return null;
-  }
 
   return {
     meetsThreshold: scoreData.score >= scoreData.threshold,
