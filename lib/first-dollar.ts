@@ -47,7 +47,12 @@ export async function getFirstDollarScore(
 
     if (response.status === 404) {
       console.log(`[FirstDollar] User ${cleanUsername} not found`);
-      return null;
+      // Treat missing users as score 0 so they do not meet the threshold.
+      return {
+        username: cleanUsername,
+        score: 0,
+        threshold: DEFAULT_THRESHOLD,
+      };
     }
 
     if (!response.ok) {
@@ -91,7 +96,7 @@ export async function checkUserScoreThreshold(
   const scoreData = await getFirstDollarScore(telegramUsername);
 
   if (!scoreData) {
-    // User not found in First Dollar - allow them by default
+    // API error or request failure - allow by default to avoid false kicks.
     return null;
   }
 
