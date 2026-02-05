@@ -1,10 +1,10 @@
 import { Context } from "grammy";
 import { ChatMemberUpdated } from "grammy/types";
-import { checkUserScoreThreshold, generateThresholdDMMessage } from "../../first-dollar";
+import { checkUserEligibility, generateEligibilityDMMessage } from "../../first-dollar";
 
 /**
  * Handles new members joining the group.
- * Checks their First Dollar score and removes them if below threshold.
+ * Checks their First Dollar eligibility and removes them if not eligible.
  */
 export async function handleMemberJoin(ctx: Context) {
   const update = ctx.update;
@@ -28,12 +28,12 @@ export async function handleMemberJoin(ctx: Context) {
 
     console.log(`[MemberJoin] User ${user.username || user.id} joined chat ${chatId}`);
 
-    // Check First Dollar score threshold
-    const scoreCheck = await checkUserScoreThreshold(user.username);
+    // Check First Dollar eligibility
+    const scoreCheck = await checkUserEligibility(user.username);
 
-    if (scoreCheck && !scoreCheck.meetsThreshold) {
+    if (!scoreCheck.eligible) {
       console.log(
-        `[MemberJoin] User ${scoreCheck.username} score (${scoreCheck.score}) below threshold (${scoreCheck.threshold}), removing from group`
+        `[MemberJoin] User ${scoreCheck.username} not eligible (score: ${scoreCheck.score}), removing from group`
       );
 
       try {
@@ -45,10 +45,10 @@ export async function handleMemberJoin(ctx: Context) {
 
         // Send DM explaining why they were removed
         try {
-          const dmMessage = generateThresholdDMMessage(scoreCheck.score, scoreCheck.threshold);
-          const fullMessage = `You were removed from the group because your First Dollar score doesn't meet the required threshold.\n\n${dmMessage}\n\nOnce your score improves, you can rejoin the group.`;
+          const dmMessage = generateEligibilityDMMessage(scoreCheck.score);
+          const fullMessage = `You were removed from the group because your First Dollar account is not eligible.\n\n${dmMessage}\n\nOnce you're eligible, you can rejoin the group.`;
           await ctx.api.sendMessage(user.id, fullMessage);
-          console.log(`[MemberJoin] Sent threshold DM to user ${user.id}`);
+          console.log(`[MemberJoin] Sent eligibility DM to user ${user.id}`);
         } catch (dmError) {
           // User may not have started a conversation with the bot
           console.log(
@@ -59,9 +59,9 @@ export async function handleMemberJoin(ctx: Context) {
       } catch (error) {
         console.error(`[MemberJoin] Failed to remove user ${user.id}:`, error);
       }
-    } else if (scoreCheck) {
+    } else {
       console.log(
-        `[MemberJoin] User ${scoreCheck.username} score (${scoreCheck.score}) meets threshold (${scoreCheck.threshold}), allowing`
+        `[MemberJoin] User ${scoreCheck.username} eligible (score: ${scoreCheck.score}), allowing`
       );
     }
 
@@ -80,12 +80,12 @@ export async function handleMemberJoin(ctx: Context) {
 
       console.log(`[MemberJoin] User ${newUser.username || newUser.id} joined via message event`);
 
-      // Check First Dollar score threshold
-      const scoreCheck = await checkUserScoreThreshold(newUser.username);
+      // Check First Dollar eligibility
+      const scoreCheck = await checkUserEligibility(newUser.username);
 
-      if (scoreCheck && !scoreCheck.meetsThreshold) {
+      if (!scoreCheck.eligible) {
         console.log(
-          `[MemberJoin] User ${scoreCheck.username} score (${scoreCheck.score}) below threshold (${scoreCheck.threshold}), removing from group`
+          `[MemberJoin] User ${scoreCheck.username} not eligible (score: ${scoreCheck.score}), removing from group`
         );
 
         try {
@@ -96,10 +96,10 @@ export async function handleMemberJoin(ctx: Context) {
 
           // Send DM
           try {
-            const dmMessage = generateThresholdDMMessage(scoreCheck.score, scoreCheck.threshold);
-            const fullMessage = `You were removed from the group because your First Dollar score doesn't meet the required threshold.\n\n${dmMessage}\n\nOnce your score improves, you can rejoin the group.`;
+            const dmMessage = generateEligibilityDMMessage(scoreCheck.score);
+            const fullMessage = `You were removed from the group because your First Dollar account is not eligible.\n\n${dmMessage}\n\nOnce you're eligible, you can rejoin the group.`;
             await ctx.api.sendMessage(newUser.id, fullMessage);
-            console.log(`[MemberJoin] Sent threshold DM to user ${newUser.id}`);
+            console.log(`[MemberJoin] Sent eligibility DM to user ${newUser.id}`);
           } catch (dmError) {
             console.log(
               `[MemberJoin] Could not send DM to user ${newUser.id}:`,
