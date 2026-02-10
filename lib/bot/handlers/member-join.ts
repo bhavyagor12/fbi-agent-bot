@@ -34,10 +34,10 @@ async function kickUserWithRetry(
         `[MemberJoin] Kick attempt ${attempt}/${KICK_MAX_RETRIES} for user ${userId} in chat ${chatId}`
       );
       // Kick the user (ban then immediately unban to allow rejoin later)
-      await ctx.api.banChatMember(chatId, userId);
-      console.log(`[MemberJoin] banChatMember succeeded for user ${userId}`);
-      await ctx.api.unbanChatMember(chatId, userId);
-      console.log(`[MemberJoin] unbanChatMember succeeded for user ${userId}`);
+      const banResponse = await ctx.api.banChatMember(chatId, userId);
+      console.log(`[MemberJoin] banChatMember succeeded for user ${userId}, response:`, JSON.stringify(banResponse));
+      const unbanResponse = await ctx.api.unbanChatMember(chatId, userId);
+      console.log(`[MemberJoin] unbanChatMember succeeded for user ${userId}, response:`, JSON.stringify(unbanResponse));
       console.log(
         `[MemberJoin] Removed user ${userId} from chat ${chatId} on attempt ${attempt}`
       );
@@ -104,6 +104,7 @@ export async function handleMemberJoin(ctx: Context) {
     console.log(
       `[MemberJoin] Eligibility check for user ${user.id}: eligible=${scoreCheck.eligible}, score=${scoreCheck.score}, username=${scoreCheck.username}`
     );
+    console.log("[MemberJoin] Eligibility response:", JSON.stringify(scoreCheck, null, 2));
 
     if (!scoreCheck.eligible) {
       console.log(
@@ -156,6 +157,7 @@ export async function handleMemberJoin(ctx: Context) {
       console.log(
         `[MemberJoin] Eligibility check (message event) for user ${newUser.id}: eligible=${scoreCheck.eligible}, score=${scoreCheck.score}, username=${scoreCheck.username}`
       );
+      console.log("[MemberJoin] Eligibility response:", JSON.stringify(scoreCheck, null, 2));
 
       if (!scoreCheck.eligible) {
         console.log(
