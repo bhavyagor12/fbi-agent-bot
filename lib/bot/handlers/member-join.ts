@@ -30,9 +30,14 @@ async function kickUserWithRetry(
 ): Promise<void> {
   for (let attempt = 1; attempt <= KICK_MAX_RETRIES; attempt++) {
     try {
+      console.log(
+        `[MemberJoin] Kick attempt ${attempt}/${KICK_MAX_RETRIES} for user ${userId} in chat ${chatId}`
+      );
       // Kick the user (ban then immediately unban to allow rejoin later)
       await ctx.api.banChatMember(chatId, userId);
+      console.log(`[MemberJoin] banChatMember succeeded for user ${userId}`);
       await ctx.api.unbanChatMember(chatId, userId);
+      console.log(`[MemberJoin] unbanChatMember succeeded for user ${userId}`);
       console.log(
         `[MemberJoin] Removed user ${userId} from chat ${chatId} on attempt ${attempt}`
       );
@@ -55,6 +60,11 @@ async function kickUserWithRetry(
           ? (retryAfter + 1) * 1000
           : RETRY_BACKOFF_MS * attempt;
 
+      if (retryAfter !== null) {
+        console.warn(
+          `[MemberJoin] Telegram rate limit hit for user ${userId}. retry_after=${retryAfter}s`
+        );
+      }
       console.warn(
         `[MemberJoin] Kick attempt ${attempt} failed for user ${userId} (${errorMessage}). Retrying in ${waitMs}ms`
       );
@@ -91,6 +101,9 @@ export async function handleMemberJoin(ctx: Context) {
 
     // Check First Dollar eligibility
     const scoreCheck = await checkUserEligibility(user.username);
+    console.log(
+      `[MemberJoin] Eligibility check for user ${user.id}: eligible=${scoreCheck.eligible}, score=${scoreCheck.score}, username=${scoreCheck.username}`
+    );
 
     if (!scoreCheck.eligible) {
       console.log(
@@ -120,6 +133,7 @@ export async function handleMemberJoin(ctx: Context) {
       console.log(
         `[MemberJoin] User ${scoreCheck.username} eligible (score: ${scoreCheck.score}), allowing`
       );
+      console.log(`[MemberJoin] No removal action needed for user ${user.id}`);
     }
 
     return;
@@ -139,6 +153,9 @@ export async function handleMemberJoin(ctx: Context) {
 
       // Check First Dollar eligibility
       const scoreCheck = await checkUserEligibility(newUser.username);
+      console.log(
+        `[MemberJoin] Eligibility check (message event) for user ${newUser.id}: eligible=${scoreCheck.eligible}, score=${scoreCheck.score}, username=${scoreCheck.username}`
+      );
 
       if (!scoreCheck.eligible) {
         console.log(
@@ -163,6 +180,11 @@ export async function handleMemberJoin(ctx: Context) {
         } catch (error) {
           console.error(`[MemberJoin] Failed to remove user ${newUser.id}:`, error);
         }
+      } else {
+        console.log(
+          `[MemberJoin] User ${scoreCheck.username} eligible (score: ${scoreCheck.score}), allowing`
+        );
+        console.log(`[MemberJoin] No removal action needed for user ${newUser.id}`);
       }
     }
   }
