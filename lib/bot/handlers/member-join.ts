@@ -2,6 +2,67 @@ import { Context } from "grammy";
 import { ChatMemberUpdated } from "grammy/types";
 import { checkUserEligibility, generateEligibilityDMMessage } from "../../first-dollar";
 
+const KICK_MAX_RETRIES = 3;
+const RETRY_BACKOFF_MS = 1500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getRetryAfterSeconds(error: unknown): number | null {
+  const maybeError = error as {
+    error_code?: number;
+    parameters?: { retry_after?: number };
+  };
+  if (
+    maybeError?.error_code === 429 &&
+    typeof maybeError?.parameters?.retry_after === "number"
+  ) {
+    return maybeError.parameters.retry_after;
+  }
+  return null;
+}
+
+async function kickUserWithRetry(
+  ctx: Context,
+  chatId: number,
+  userId: number
+): Promise<void> {
+  for (let attempt = 1; attempt <= KICK_MAX_RETRIES; attempt++) {
+    try {
+      // Kick the user (ban then immediately unban to allow rejoin later)
+      await ctx.api.banChatMember(chatId, userId);
+      await ctx.api.unbanChatMember(chatId, userId);
+      console.log(
+        `[MemberJoin] Removed user ${userId} from chat ${chatId} on attempt ${attempt}`
+      );
+      return;
+    } catch (error) {
+      const retryAfter = getRetryAfterSeconds(error);
+      const errorMessage =
+        error instanceof Error ? error.message : JSON.stringify(error);
+
+      if (attempt >= KICK_MAX_RETRIES) {
+        console.error(
+          `[MemberJoin] Failed to remove user ${userId} after ${attempt} attempts:`,
+          error
+        );
+        throw error;
+      }
+
+      const waitMs =
+        retryAfter !== null
+          ? (retryAfter + 1) * 1000
+          : RETRY_BACKOFF_MS * attempt;
+
+      console.warn(
+        `[MemberJoin] Kick attempt ${attempt} failed for user ${userId} (${errorMessage}). Retrying in ${waitMs}ms`
+      );
+      await sleep(waitMs);
+    }
+  }
+}
+
 /**
  * Handles new members joining the group.
  * Checks their First Dollar eligibility and removes them if not eligible.
@@ -37,11 +98,7 @@ export async function handleMemberJoin(ctx: Context) {
       );
 
       try {
-        // Kick the user (ban then immediately unban to allow rejoin later)
-        await ctx.api.banChatMember(chatId, user.id);
-        // Immediately unban so they can rejoin when their score improves
-        await ctx.api.unbanChatMember(chatId, user.id);
-        console.log(`[MemberJoin] Removed user ${user.id} from chat ${chatId}`);
+        await kickUserWithRetry(ctx, chatId, user.id);
 
         // Send DM explaining why they were removed
         try {
@@ -89,10 +146,7 @@ export async function handleMemberJoin(ctx: Context) {
         );
 
         try {
-          // Kick the user
-          await ctx.api.banChatMember(message.chat.id, newUser.id);
-          await ctx.api.unbanChatMember(message.chat.id, newUser.id);
-          console.log(`[MemberJoin] Removed user ${newUser.id} from chat ${message.chat.id}`);
+          await kickUserWithRetry(ctx, message.chat.id, newUser.id);
 
           // Send DM
           try {
